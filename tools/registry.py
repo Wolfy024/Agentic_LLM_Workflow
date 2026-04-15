@@ -1,0 +1,65 @@
+"""Tool registry and core infrastructure.
+
+Provides the @tool decorator, workspace management, path resolution with
+sandboxing, and the execution engine that dispatches tool calls.
+"""
+
+from __future__ import annotations
+import os
+import json
+from typing import Any
+
+TOOL_REGISTRY: dict[str, tuple[Any, dict]] = {}
+WORKSPACE: str = os.getcwd()
+
+MAX_READ_SIZE = 1_048_576  # 1 MB default limit for file reads
+
+
+def set_workspace(path: str):
+    global WORKSPACE
+    WORKSPACE = os.path.abspath(path)
+
+
+def _resolve(path: str) -> str:
+    """Resolve a path relative to the workspace, confined to WORKSPACE root."""
+    if os.path.isabs(path):
+        resolved = os.path.normpath(path)
+    else:
+        resolved = os.path.normpath(os.path.join(WORKSPACE, path))
+    ws = os.path.normpath(WORKSPACE)
+    if not resolved.startswith(ws + os.sep) and resolved != ws:
+        raise PermissionError(f"Path escapes workspace: {path} (resolved: {resolved}, workspace: {ws})")
+    return resolved
+
+
+def tool(name: str, description: str, parameters: dict):
+    """Decorator that registers a tool with its OpenAI-function-calling schema."""
+    def decorator(fn):
+        schema = {
+            "type": "function",
+            "function": {
+                "name": name,
+                "description": description,
+                "parameters": parameters,
+            },
+        }
+        TOOL_REGISTRY[name] = (fn, schema)
+        return fn
+    return decorator
+
+
+def get_tool_schemas() -> list[dict]:
+    return [schema for _, schema in TOOL_REGISTRY.values()]
+
+
+def execute_tool(name: str, args: dict) -> str:
+    if name not in TOOL_REGISTRY:
+        return json.dumps({"error": f"Unknown tool: {name}"})
+    fn, _ = TOOL_REGISTRY[name]
+    try:
+        result = fn(**args)
+        if isinstance(result, str):
+            return result
+        return json.dumps(result, indent=2, default=str)
+    except Exception as e:
+        return json.dumps({"error": f"{type(e).__name__}: {e}"})
