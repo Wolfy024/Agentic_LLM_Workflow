@@ -109,14 +109,17 @@ class ToolExecutor:
                 with self._tool_io_lock: print_tool_result(err, success=False)
                 return {"role": "tool", "tool_call_id": tc["id"], "content": err}
 
+        # Never hold _tool_io_lock during prompt() or execute_tool — nested prompt_toolkit / long I/O can hang.
+        result: str
         if is_destructive(name, args):
-            with self._tool_io_lock:
-                if not ask_permission(name, args):
+            if not ask_permission(name, args):
+                with self._tool_io_lock:
                     print_permission_denied()
-                    result = json.dumps({"error": "Permission denied by user."})
-                else:
+                result = json.dumps({"error": "Permission denied by user."})
+            else:
+                with self._tool_io_lock:
                     print_permission_approved()
-                    result = execute_tool(name, args)
+                result = execute_tool(name, args)
         else:
             result = execute_tool(name, args)
 

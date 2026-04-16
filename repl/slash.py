@@ -1,4 +1,4 @@
-"""Slash command handlers for the MINILLM REPL."""
+"""Slash command handlers for the LLM Orchestrator REPL."""
 
 from __future__ import annotations
 
@@ -235,7 +235,7 @@ def execute_slash_command(
         except PermissionError:
             print_error("Export path must be under the workspace")
             return False, multiline_mode
-        lines = ["# MINILLM export\n\n", f"model: `{runner.llm.model}`\n\n---\n\n"]
+        lines = ["# LLM Orchestrator export\n\n", f"model: `{runner.llm.model}`\n\n---\n\n"]
         for m in runner.state.messages:
             role = m.get("role", "")
             c = m.get("content")

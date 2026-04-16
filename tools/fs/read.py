@@ -8,7 +8,7 @@ and listing directory structures.
 from __future__ import annotations
 import os
 import json
-from tools.registry import tool, _resolve, MAX_READ_SIZE
+from tools.registry import tool, _resolve, MAX_READ_SIZE, is_path_inside_workspace
 
 
 @tool(
@@ -66,9 +66,22 @@ def read_json(path: str, key_path: str | None = None) -> str:
     return json.dumps(data, indent=2, default=str)[:6000]
 
 
+def _format_directory_listing(resolved: str) -> str:
+    entries = []
+    for entry in sorted(os.listdir(resolved)):
+        full = os.path.join(resolved, entry)
+        kind = "DIR" if os.path.isdir(full) else "FILE"
+        size = os.path.getsize(full) if os.path.isfile(full) else ""
+        entries.append(f"  [{kind}] {entry}" + (f"  ({size} bytes)" if size else ""))
+    return "\n".join(entries) if entries else "(empty directory)"
+
+
 @tool(
     name="list_directory",
-    description="List files and directories at a given path.",
+    description=(
+        "List files and directories. Workspace-relative paths stay under the project. "
+        "Absolute paths may point outside the workspace (e.g. Desktop) for read-only listing; use import_external_file to copy files in."
+    ),
     parameters={
         "type": "object",
         "properties": {
@@ -78,14 +91,19 @@ def read_json(path: str, key_path: str | None = None) -> str:
     },
 )
 def list_directory(path: str = ".") -> str:
-    resolved = _resolve(path)
-    entries = []
-    for entry in sorted(os.listdir(resolved)):
-        full = os.path.join(resolved, entry)
-        kind = "DIR" if os.path.isdir(full) else "FILE"
-        size = os.path.getsize(full) if os.path.isfile(full) else ""
-        entries.append(f"  [{kind}] {entry}" + (f"  ({size} bytes)" if size else ""))
-    return "\n".join(entries) if entries else "(empty directory)"
+    if os.path.isabs(path):
+        resolved = os.path.abspath(os.path.normpath(path))
+        if not is_path_inside_workspace(resolved):
+            if not os.path.isdir(resolved):
+                return f"Error: Not a directory: {path}"
+            return _format_directory_listing(resolved)
+        # absolute but still under workspace — same as _resolve
+        resolved = _resolve(path)
+    else:
+        resolved = _resolve(path)
+    if not os.path.isdir(resolved):
+        return f"Error: Not a directory: {path}"
+    return _format_directory_listing(resolved)
 
 
 @tool(

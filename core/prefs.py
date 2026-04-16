@@ -1,5 +1,5 @@
 """
-Persistent user preferences management for MINILLM.
+Persistent user preferences management for LLM Orchestrator.
 
 This module handles loading and saving user configuration files located
 under the `~/.minillm/` directory.

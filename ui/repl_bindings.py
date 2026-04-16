@@ -1,5 +1,5 @@
 """
-Extra prompt_toolkit key bindings for the MINILLM REPL.
+Extra prompt_toolkit key bindings for the LLM Orchestrator REPL.
 
 When the slash-command completion menu is open, Enter applies the selected
 completion instead of submitting the line (same idea as many shells/IDEs).

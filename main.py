@@ -1,5 +1,5 @@
 """
-MINILLM Orchestrator Entrypoint.
+LLM Orchestrator Entrypoint.
 
 Ties together the core loops, LLM client, UI console, and tool registry.
 """
@@ -27,7 +27,7 @@ from llm.client import LLMClient
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MINILLM Boss — local coding agent")
+    parser = argparse.ArgumentParser(description="LLM Orchestrator — local coding agent")
     parser.add_argument("workspace", nargs="?", default=None)
     parser.add_argument("--model", default=None)
     parser.add_argument("--profile", choices=["strict", "dev", "ci"], default=None)

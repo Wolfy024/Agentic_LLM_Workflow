@@ -1,12 +1,29 @@
 """
-Read URL web tool.
+Read URL web tool and HTTP(S) download to workspace.
 
-Fetches web pages, extracts main body text by stripping scripts and styles,
-and returns readable content.
+`read_url` returns extracted text for browsing docs.
+`download_url` streams bytes to a workspace file (binaries, archives, etc.).
 """
 
 from __future__ import annotations
-from tools.registry import tool
+
+import os
+from urllib.parse import urlparse
+
+import httpx
+
+from tools.registry import tool, _resolve
+
+# Cap downloads to avoid filling disk / memory (streaming; enforced while reading).
+MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
+
+
+def _validate_http_url(url: str) -> None:
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Only http(s) URLs are allowed (got {parsed.scheme!r})")
+    if not parsed.netloc:
+        raise ValueError("Invalid URL: missing host")
 
 
 @tool(
@@ -21,7 +38,6 @@ from tools.registry import tool
     },
 )
 def read_url(url: str) -> str:
-    import httpx
     try:
         resp = httpx.get(url, follow_redirects=True, timeout=15)
         resp.raise_for_status()
@@ -59,3 +75,58 @@ def read_url(url: str) -> str:
         return resp.text[:8000]
     except Exception as e:
         return f"Error fetching URL: {e}"
+
+
+@tool(
+    name="download_url",
+    description=(
+        "Download a file from an http(s) URL into the workspace. "
+        "Use for archives, images, binaries, or large docs. "
+        "Path is relative to the workspace. Max size 100 MiB."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "http(s) URL to download"},
+            "path": {
+                "type": "string",
+                "description": "Destination file path inside the workspace (e.g. vendor/lib.zip)",
+            },
+        },
+        "required": ["url", "path"],
+    },
+)
+def download_url(url: str, path: str) -> str:
+    _validate_http_url(url)
+    resolved = _resolve(path)
+    parent = os.path.dirname(resolved)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
+    written = 0
+    try:
+        with httpx.stream(
+            "GET",
+            url.strip(),
+            follow_redirects=True,
+            timeout=httpx.Timeout(120.0, connect=30.0),
+            headers={"User-Agent": "LLM-Orchestrator/1.0 (download_url)"},
+        ) as resp:
+            resp.raise_for_status()
+            with open(resolved, "wb") as out:
+                for chunk in resp.iter_bytes(chunk_size=64 * 1024):
+                    written += len(chunk)
+                    if written > MAX_DOWNLOAD_BYTES:
+                        raise ValueError(
+                            f"Download exceeded max size ({MAX_DOWNLOAD_BYTES // (1024 * 1024)} MiB)"
+                        )
+                    out.write(chunk)
+    except Exception:
+        try:
+            if os.path.isfile(resolved):
+                os.remove(resolved)
+        except OSError:
+            pass
+        raise
+
+    return f"Downloaded {written} bytes to {path}"

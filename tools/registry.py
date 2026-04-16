@@ -32,6 +32,16 @@ def _resolve(path: str) -> str:
     return resolved
 
 
+def is_path_inside_workspace(path: str) -> bool:
+    """True if *path* resolves to a location under WORKSPACE (including the root itself)."""
+    try:
+        resolved = os.path.realpath(os.path.abspath(path))
+        ws = os.path.realpath(WORKSPACE)
+        return os.path.commonpath([resolved, ws]) == ws
+    except (OSError, ValueError):
+        return False
+
+
 def tool(name: str, description: str, parameters: dict):
     """Decorator that registers a tool with its OpenAI-function-calling schema."""
     def decorator(fn):

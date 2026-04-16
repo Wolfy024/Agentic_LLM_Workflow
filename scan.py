@@ -1,5 +1,5 @@
 """
-AST inventory and architecture checks for MINILLM.
+AST inventory and architecture checks for LLM Orchestrator.
 
 Default: validate that Python sources parse and follow project import rules.
 Use --inventory for per-file function/class size report (legacy behavior).
@@ -99,7 +99,7 @@ def report_functions(path: str) -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="MINILLM AST scan")
+    ap = argparse.ArgumentParser(description="LLM Orchestrator AST scan")
     ap.add_argument(
         "--inventory",
         action="store_true",

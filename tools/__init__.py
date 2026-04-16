@@ -1,4 +1,4 @@
-"""MINILLM Tools — registry and tool implementations.
+"""LLM Orchestrator Tools — registry and tool implementations.
 
 Importing this package loads all tool modules so the shared TOOL_REGISTRY is populated.
 """
@@ -15,6 +15,7 @@ from .registry import (
     get_tool_schemas,
     execute_tool,
     _resolve,
+    is_path_inside_workspace,
     tool,
 )
 
@@ -25,6 +26,7 @@ _TOOL_SUBMODULES = (
     ".fs.write",
     ".fs.edit",
     ".fs.search",
+    ".fs.external",
     ".git.core",
     ".git.diff",
     ".git.info",

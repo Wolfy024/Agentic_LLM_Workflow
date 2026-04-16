@@ -89,7 +89,14 @@ def print_tools(schemas: list[dict]) -> None:
                     "git_remote", "git_credential_check", "github_api"):
             cat = "Git Remote"
         elif name.startswith("git_"): cat = "Git Local"
-        elif name in ("web_search", "web_search_news", "web_search_images", "read_url", "search_files"):
+        elif name in (
+            "web_search",
+            "web_search_news",
+            "web_search_images",
+            "read_url",
+            "download_url",
+            "search_files",
+        ):
             cat = "Search & Web"
         elif name in ("run_command", "run_diagnostics", "env_info", "list_processes"):
             cat = "System"

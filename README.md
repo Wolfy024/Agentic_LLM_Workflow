@@ -1,4 +1,4 @@
-# MINILLM — Local AI Coding Agent
+# LLM Orchestrator — Local AI Coding Agent
 
 > A local AI coding agent powered by Gemma 4 31B with full tool access — reads, writes, searches, and commits code autonomously inside your workspace.
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-MINILLM is an interactive, terminal-based coding agent that connects to an OpenAI-compatible LLM endpoint (defaulting to **Gemma 4 31B**) and gives the model a rich set of tools to work with your local codebase. You describe a task in plain language; the agent reads files, edits code, runs git commands, searches the web, and reports back — all without leaving the terminal.
+LLM Orchestrator is an interactive, terminal-based coding agent that connects to an OpenAI-compatible LLM endpoint (defaulting to **Gemma 4 31B**) and gives the model a rich set of tools to work with your local codebase. You describe a task in plain language; the agent reads files, edits code, runs git commands, searches the web, and reports back — all without leaving the terminal.
 
 Key characteristics:
 - **Local-first**: runs entirely in your terminal, no cloud IDE or browser required.
@@ -77,7 +77,7 @@ Agentic_LLM_Workflow/
 |---|---|
 | Python | 3.10 or newer |
 | An OpenAI-compatible LLM endpoint | Any (llama.cpp, Ollama, LM Studio, vLLM, hosted API) |
-| `MINILLM_API_KEY` env var | Required (may be empty string `""` for unauthenticated local servers) |
+| `LLM_ORCHESTRATOR_API_KEY` env var | Required (may be empty string `""` for unauthenticated local servers) |
 | `SERPER_API_KEY` env var | Optional — needed only for web search tools |
 
 ---
@@ -107,14 +107,14 @@ Configuration lives in **`config.json`** at the project root. The file ships wit
 // config.json
 {
   "api_base": "https://chat.neuralnote.online/v1",   // OpenAI-compatible endpoint
-  "api_key":  "env:MINILLM_API_KEY",                 // resolved from env var
+  "api_key":  "env:LLM_ORCHESTRATOR_API_KEY",                 // resolved from env var
   "model":    "unsloth/gemma-4-31B-it-GGUF:UD-Q4_K_XL",
   "profile":  "strict",                              // strict | dev | ci
   "context_window": 262144,
   "max_tokens": 131072,
   "temperature": 0.15,
   "serper_api_key": "env:SERPER_API_KEY",            // optional, for web search
-  "system_prompt": "You are MINILLM Boss, an expert local coding agent …"
+  "system_prompt": "You are LLM Orchestrator, an expert local coding agent …"
 }
 ```
 
@@ -124,7 +124,7 @@ Secrets should **never** be hardcoded in `config.json`. Use the `"env:VAR_NAME"`
 
 ```ini
 # .env  (never commit this file)
-MINILLM_API_KEY=sk-your-api-key-here
+LLM_ORCHESTRATOR_API_KEY=sk-your-api-key-here
 SERPER_API_KEY=your-serper-key-here
 ```
 

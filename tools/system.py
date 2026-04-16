@@ -49,6 +49,9 @@ def run_command(command: str, cwd: str | None = None, timeout: int = 30) -> str:
 def env_info() -> dict:
     import platform
     import shutil
+
+    from ._subprocess_utf8 import run_exe_line
+
     info: dict = {
         "os": platform.platform(),
         "python": platform.python_version(),
@@ -58,16 +61,25 @@ def env_info() -> dict:
     }
     git = shutil.which("git")
     if git:
-        result = subprocess.run(["git", "--version"], capture_output=True, timeout=5, **UTF8_TEXT_KWARGS)
-        info["git"] = out_strip(result) if result.returncode == 0 else "not found"
+        try:
+            result = run_exe_line(git, ["--version"], timeout=5)
+            info["git"] = out_strip(result) if result.returncode == 0 else "not found"
+        except OSError:
+            info["git"] = "not found"
     node = shutil.which("node")
     if node:
-        result = subprocess.run(["node", "--version"], capture_output=True, timeout=5, **UTF8_TEXT_KWARGS)
-        info["node"] = out_strip(result) if result.returncode == 0 else None
+        try:
+            result = run_exe_line(node, ["--version"], timeout=5)
+            info["node"] = out_strip(result) if result.returncode == 0 else None
+        except OSError:
+            info["node"] = None
     npm = shutil.which("npm")
     if npm:
-        result = subprocess.run(["npm", "--version"], capture_output=True, timeout=5, **UTF8_TEXT_KWARGS)
-        info["npm"] = out_strip(result) if result.returncode == 0 else None
+        try:
+            result = run_exe_line(npm, ["--version"], timeout=5)
+            info["npm"] = out_strip(result) if result.returncode == 0 else None
+        except OSError:
+            info["npm"] = None
     return info
 
 

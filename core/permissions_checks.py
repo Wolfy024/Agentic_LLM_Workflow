@@ -7,23 +7,41 @@ is considered destructive or strictly denied by the profile.
 
 from __future__ import annotations
 
+import os as _os
+
+
+def _list_directory_targets_outside_workspace(args: dict) -> bool:
+    """True when list_directory's path resolves outside WORKSPACE (prompt in strict; deny in ci)."""
+    from tools.registry import WORKSPACE as _ws, is_path_inside_workspace
+
+    p = args.get("path", ".") or "."
+    if _os.path.isabs(p):
+        r = _os.path.abspath(_os.path.normpath(p))
+    else:
+        r = _os.path.abspath(_os.path.normpath(_os.path.join(_ws, p)))
+    return not is_path_inside_workspace(r)
+
+
 # File create/modify inside the workspace (write, patch, replace, mkdir, move) do not
 # require approval. Only deletion and non-file destructive ops are gated.
 DESTRUCTIVE_TOOLS = {
     "delete_file", "git_init", "git_commit", "git_checkout",
     "git_branch_delete", "git_reset", "git_stash", "git_push",
-    "git_pull", "git_clone", "run_command"
+    "git_pull", "git_clone", "run_command",
+    "read_external_file", "import_external_file",
 }
 
 CONTEXT_DESTRUCTIVE_TOOLS = {
     "github_api": lambda args: args.get("method", "GET") != "GET",
     "git_tag": lambda args: args.get("action") in ("create", "delete"),
     "git_remote": lambda args: args.get("action") in ("add", "remove"),
+    # list_directory outside workspace is read-only — no y/n prompt (CI still blocks via is_tool_denied_in_profile).
 }
 
 CI_DENIED_TOOLS = frozenset({
     "write_file", "append_to_file", "patch_file", "delete_file", "replace_in_file",
-    "move_file", "create_directory",
+    "move_file", "create_directory", "download_url",
+    "read_external_file", "import_external_file",
     "git_init", "git_commit", "git_checkout", "git_branch_delete", "git_reset",
     "git_stash", "git_push", "git_pull", "git_clone", "run_command",
 })
@@ -49,6 +67,8 @@ def is_tool_denied_in_profile(tool_name: str, args: dict) -> bool:
     """In profile 'ci', block mutating tools. dev matches strict for now."""
     if _profile != "ci":
         return False
+    if tool_name == "list_directory" and _list_directory_targets_outside_workspace(args):
+        return True
     if tool_name in CI_DENIED_TOOLS:
         return True
     if tool_name == "git_remote" and args.get("action", "list") in ("add", "remove"):
