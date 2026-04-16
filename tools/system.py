@@ -5,6 +5,7 @@ import os
 import subprocess
 
 from .registry import tool, _resolve, WORKSPACE
+from ._subprocess_utf8 import UTF8_TEXT_KWARGS, err_strip, out_strip
 
 
 @tool(
@@ -23,11 +24,15 @@ from .registry import tool, _resolve, WORKSPACE
 def run_command(command: str, cwd: str | None = None, timeout: int = 30) -> str:
     resolved_cwd = _resolve(cwd) if cwd else WORKSPACE
     result = subprocess.run(
-        command, shell=True, cwd=resolved_cwd,
-        capture_output=True, text=True, timeout=timeout,
+        command,
+        shell=True,
+        cwd=resolved_cwd,
+        capture_output=True,
+        timeout=timeout,
+        **UTF8_TEXT_KWARGS,
     )
-    output = result.stdout.strip()
-    err = result.stderr.strip()
+    output = out_strip(result)
+    err = err_strip(result)
     combined = output
     if err:
         combined += f"\n[stderr] {err}" if output else err
@@ -53,16 +58,16 @@ def env_info() -> dict:
     }
     git = shutil.which("git")
     if git:
-        result = subprocess.run(["git", "--version"], capture_output=True, text=True, timeout=5)
-        info["git"] = result.stdout.strip() if result.returncode == 0 else "not found"
+        result = subprocess.run(["git", "--version"], capture_output=True, timeout=5, **UTF8_TEXT_KWARGS)
+        info["git"] = out_strip(result) if result.returncode == 0 else "not found"
     node = shutil.which("node")
     if node:
-        result = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=5)
-        info["node"] = result.stdout.strip() if result.returncode == 0 else None
+        result = subprocess.run(["node", "--version"], capture_output=True, timeout=5, **UTF8_TEXT_KWARGS)
+        info["node"] = out_strip(result) if result.returncode == 0 else None
     npm = shutil.which("npm")
     if npm:
-        result = subprocess.run(["npm", "--version"], capture_output=True, text=True, timeout=5)
-        info["npm"] = result.stdout.strip() if result.returncode == 0 else None
+        result = subprocess.run(["npm", "--version"], capture_output=True, timeout=5, **UTF8_TEXT_KWARGS)
+        info["npm"] = out_strip(result) if result.returncode == 0 else None
     return info
 
 
@@ -83,8 +88,51 @@ def list_processes(filter: str | None = None) -> str:
         cmd = "tasklist /FO CSV /NH"
     else:
         cmd = "ps aux --sort=-%mem"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
-    lines = result.stdout.strip().splitlines()
+    result = subprocess.run(cmd, shell=True, capture_output=True, timeout=10, **UTF8_TEXT_KWARGS)
+    lines = out_strip(result).splitlines()
     if filter:
         lines = [l for l in lines if filter.lower() in l.lower()]
     return "\n".join(lines[:80]) if lines else "No matching processes"
+
+
+@tool(
+    name="run_diagnostics",
+    description="Run a linter/typecheck command in the workspace and return stdout/stderr (e.g. ruff check, eslint). Read-only by default.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "command": {
+                "type": "string",
+                "description": "Shell command. Default 'ruff check .' if ruff exists, else 'python -m compileall -q .'",
+            },
+            "cwd": {"type": "string", "description": "Working directory relative to workspace. Default '.'"},
+            "timeout": {"type": "integer", "description": "Seconds. Default 120."},
+        },
+        "required": [],
+    },
+)
+def run_diagnostics(command: str | None = None, cwd: str | None = None, timeout: int = 120) -> str:
+    import shutil
+    resolved = _resolve(cwd) if cwd else WORKSPACE
+    cmd = command
+    if not cmd:
+        if shutil.which("ruff"):
+            cmd = "ruff check ."
+        else:
+            cmd = "python -m compileall -q ."
+    result = subprocess.run(
+        cmd,
+        shell=True,
+        cwd=resolved,
+        capture_output=True,
+        timeout=timeout,
+        **UTF8_TEXT_KWARGS,
+    )
+    out = out_strip(result)
+    err = err_strip(result)
+    combined = out
+    if err:
+        combined += f"\n[stderr]\n{err}" if out else err
+    if result.returncode != 0:
+        combined = f"[exit {result.returncode}]\n{combined}"
+    return combined[:24_000] if combined else "(no output)"

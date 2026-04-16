@@ -2,6 +2,7 @@
   "api_base": "https://chat.neuralnote.online/v1",
   "api_key": "env:MINILLM_API_KEY",
   "model": "unsloth/gemma-4-31B-it-GGUF:UD-Q4_K_XL",
+  "profile": "strict",
   "context_window": 262144,
   "max_tokens": 131072,
   "temperature": 0.15,

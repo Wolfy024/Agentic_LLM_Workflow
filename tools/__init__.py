@@ -1,15 +1,11 @@
-"""MINILLM Tools package — organized by category.
+"""MINILLM Tools — registry and tool implementations.
 
-Submodules:
-    tools.registry    — Core infrastructure (decorator, executor, sandbox)
-    tools.files       — File operations (17 tools)
-    tools.git_local   — Local git operations (14 tools)
-    tools.git_remote  — Remote git + GitHub (8 tools)
-    tools.search_web  — Web search + URL fetching (4 tools)
-    tools.system      — Shell, env info, processes (3 tools)
-
-Importing this package auto-registers all tools in the shared TOOL_REGISTRY.
+Importing this package loads all tool modules so the shared TOOL_REGISTRY is populated.
 """
+
+from __future__ import annotations
+
+import importlib
 
 from .registry import (
     TOOL_REGISTRY,
@@ -22,11 +18,25 @@ from .registry import (
     tool,
 )
 
-from .search_web import set_serper_key
+from .web.serper import set_serper_key
 
-# Import submodules so their @tool decorators run and populate the registry.
-from . import files       # noqa: F401
-from . import git_local   # noqa: F401
-from . import git_remote  # noqa: F401
-from . import search_web  # noqa: F401
-from . import system      # noqa: F401
+_TOOL_SUBMODULES = (
+    ".fs.read",
+    ".fs.write",
+    ".fs.edit",
+    ".fs.search",
+    ".git.core",
+    ".git.diff",
+    ".git.info",
+    ".git.ops",
+    ".git.remote_sync",
+    ".git.github",
+    ".web.serper",
+    ".web.fetch",
+    ".system",
+)
+
+for _sub in _TOOL_SUBMODULES:
+    importlib.import_module(_sub, __name__)
+
+del importlib, _sub, _TOOL_SUBMODULES
