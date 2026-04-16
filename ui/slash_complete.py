@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from prompt_toolkit.completion import Completer, Completion
 
-# Same behavior as main.execute_slash_command exit aliases.
+# Same behavior as repl.slash.execute_slash_command exit aliases.
 _SLASH_ALIASES: tuple[tuple[str, str], ...] = (
     ("/quit", "Quit"),
     ("/q", "Quit (short)"),

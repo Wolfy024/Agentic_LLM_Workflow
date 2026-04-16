@@ -2,7 +2,7 @@
 Configuration and ENV loading utilities.
 
 Handles parsing of the main `config.json`, loading variables from `.env`,
-resolving `env:VAR` placeholders, and interactively picking models.
+and resolving `env:VAR` placeholders.
 """
 
 from __future__ import annotations
@@ -10,15 +10,9 @@ import json
 import os
 import sys
 
-from prompt_toolkit import prompt
-from prompt_toolkit.formatted_text import HTML
-
 from ui.console import console
-from ui.dimming import muted
-from ui.palette import success, warning
-from ui.help import print_models
+from ui.palette import warning
 from ui.context_logs import print_error
-from core.cache import get_cached_models, set_cached_models
 
 
 def resolve_env(value: str) -> str:
@@ -63,87 +57,6 @@ def load_dotenv() -> None:
                 val = val[1:-1]
             if key not in os.environ:
                 os.environ[key] = val
-
-
-def fetch_models_list(config: dict) -> list:
-    """
-    GET /models with file cache to list available LLM models.
-
-    Args:
-        config (dict): The configuration containing api_base and api_key.
-
-    Returns:
-        list: The models list.
-    """
-    cached = get_cached_models(config["api_base"])
-    if cached is not None:
-        return cached
-    import httpx
-    resp = httpx.get(
-        f"{config['api_base']}/models",
-        headers={"Authorization": f"Bearer {config['api_key']}"},
-        timeout=15,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    models = data.get("data", [])
-    set_cached_models(config["api_base"], models)
-    return models
-
-
-def pick_model_if_needed(config: dict, skip_interactive: bool = False) -> None:
-    """
-    Resolve model when missing or 'auto'. Mutates config.
-
-    Args:
-        config (dict): Configuration dict.
-        skip_interactive (bool): If True, picks first model automatically.
-    """
-    model_val = config.get("model", "")
-    if model_val and model_val.lower() != "auto":
-        return
-    console.print(muted("  fetching available models..."))
-    models = []
-    try:
-        models = fetch_models_list(config)
-    except Exception as e:
-        console.print(warning(f"  could not fetch models: {e}"))
-
-    if models:
-        if skip_interactive:
-            config["model"] = models[0]["id"]
-            console.print(success(f"  selected (non-interactive): {config['model']}"))
-            return
-        if len(models) == 1:
-            config["model"] = models[0]["id"]
-            console.print(success(f"  auto-selected: {config['model']}"))
-        else:
-            print_models(models, "")
-            try:
-                choice = prompt(
-                    HTML(f"  <style fg='#6C63FF' bold='true'>pick model (1-{len(models)}) or type name: </style>")
-                ).strip()
-            except (EOFError, KeyboardInterrupt):
-                sys.exit(0)
-            if choice.isdigit() and 1 <= int(choice) <= len(models):
-                config["model"] = models[int(choice) - 1]["id"]
-            else:
-                match = [m for m in models if choice in m["id"]]
-                config["model"] = match[0]["id"] if match else models[0]["id"]
-            console.print(success(f"  selected: {config['model']}"))
-    else:
-        console.print(muted("  /models endpoint unavailable, enter model name manually"))
-        try:
-            typed = prompt(
-                HTML("  <style fg='#6C63FF' bold='true'>model name: </style>")
-            ).strip()
-        except (EOFError, KeyboardInterrupt):
-            sys.exit(0)
-        if not typed:
-            print_error("No model specified.")
-            sys.exit(1)
-        config["model"] = typed
-        console.print(success(f"  using: {config['model']}"))
 
 
 def load_config() -> dict:

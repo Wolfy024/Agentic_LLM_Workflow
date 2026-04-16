@@ -43,3 +43,13 @@ class FileWatchQueue:
             self.paths.clear()
             self.debounce_until = 0.0
             return collected
+
+    def force_drain(self) -> list[str]:
+        """Return queued paths immediately (ignores debounce). For /watch flush."""
+        with self.lock:
+            if not self.paths:
+                return []
+            collected = sorted(self.paths)[: self.max_paths]
+            self.paths.clear()
+            self.debounce_until = 0.0
+            return collected
