@@ -273,10 +273,3 @@ Contributions are welcome! Please:
 4. Open a pull request with a clear description of the change and its motivation.
 
 For significant changes, open an issue first to discuss the approach.
-
----
-
-## License
-
-*License not yet specified — placeholder. Replace this section once a license file is added to the repository.*
-
