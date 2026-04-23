@@ -1,4 +1,4 @@
-"""
+r"""
 LLM Orchestrator Windows Installer
 
 A tkinter-based GUI installer that:
