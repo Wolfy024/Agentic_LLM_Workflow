@@ -7,6 +7,7 @@ import sys
 from prompt_toolkit import prompt, HTML
 
 from llm.client import LLMClient
+from core.cache import get_cached_models, set_cached_models
 from ui.console import console
 from ui.help import print_models
 from ui.context_logs import print_error
@@ -23,11 +24,14 @@ def pick_model_if_needed(
     if model_val and model_val.lower() != "auto":
         return
     console.print(muted("  fetching available models..."))
-    models = []
-    try:
-        models = llm.list_models()
-    except Exception as e:
-        console.print(warning(f"  could not fetch models: {e}"))
+    models = get_cached_models(llm.api_base) or []
+    if not models:
+        try:
+            models = llm.list_models()
+            if models:
+                set_cached_models(llm.api_base, models)
+        except Exception as e:
+            console.print(warning(f"  could not fetch models: {e}"))
 
     if models:
         if skip_interactive:

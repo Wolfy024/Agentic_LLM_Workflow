@@ -27,8 +27,13 @@ from tools.git.core import _git
 )
 def git_commit(message: str, files: list[str] | None = None) -> str:
     targets = files or ["."]
+    errors = []
     for f in targets:
-        _git("add", f)
+        result = _git("add", f)
+        if result.startswith("[exit") or result.lower().startswith("error"):
+            errors.append(f"git add {f}: {result}")
+    if errors:
+        return "Error staging files:\n" + "\n".join(errors)
     return _git("commit", "-m", message)
 
 

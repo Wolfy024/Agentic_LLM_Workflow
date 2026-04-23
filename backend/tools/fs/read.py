@@ -13,13 +13,13 @@ from tools.registry import tool, _resolve, MAX_READ_SIZE, is_path_inside_workspa
 
 @tool(
     name="read_file",
-    description="Read the contents of a file. Returns the text content with line numbers.",
+    description="Read the contents of a file. Returns the text content with line numbers. Use offset and limit to read in chunks (50-100 lines recommended). For large files (>250 lines), omitting offset/limit returns a structural outline with line ranges so you can read only the relevant sections.",
     parameters={
         "type": "object",
         "properties": {
             "path": {"type": "string", "description": "File path (relative to workspace or absolute)"},
-            "offset": {"type": "integer", "description": "Start line (1-indexed). Optional."},
-            "limit": {"type": "integer", "description": "Max lines to read. Optional."},
+            "offset": {"type": "integer", "description": "Start line (1-indexed). Omit for small files or to get an outline of large files."},
+            "limit": {"type": "integer", "description": "Max lines to read (50-100 recommended). Omit for small files or to get an outline of large files."},
         },
         "required": ["path"],
     },
@@ -31,10 +31,81 @@ def read_file(path: str, offset: int | None = None, limit: int | None = None) ->
         return f"Error: File is {size:,} bytes ({size/1_048_576:.1f} MB), exceeds 1 MB limit. Use offset/limit to read a portion."
     with open(resolved, "r", encoding="utf-8", errors="replace") as f:
         lines = f.readlines()
+    total_lines = len(lines)
+
+    # Smart mode: for large files without offset/limit, return outline instead of dumping everything
+    if offset is None and limit is None and total_lines > 250:
+        outline = _build_file_outline(lines, path)
+        return (
+            f"File: {path} ({total_lines} lines, {size:,} bytes) — TOO LARGE to dump.\n"
+            f"Use offset/limit to read specific sections.\n\n"
+            f"OUTLINE:\n{outline}\n\n"
+            f"FIRST 30 LINES:\n"
+            + "".join(f"{i+1:>6}|{line}" for i, line in enumerate(lines[:30]))
+            + f"\n\n[Use read_file with offset/limit to read specific sections shown above.]"
+        )
+
     start = (offset - 1) if offset and offset > 0 else 0
     end = (start + limit) if limit else len(lines)
     numbered = [f"{i+1:>6}|{line}" for i, line in enumerate(lines[start:end], start=start)]
-    return "".join(numbered) if numbered else "(empty file)"
+    result = "".join(numbered) if numbered else "(empty file)"
+    if end < total_lines:
+        result += f"\n\n[TRUNCATED: {total_lines - end} more lines. Use offset={end + 1} to continue reading.]"
+    return result
+
+
+def _build_file_outline(lines: list[str], path: str) -> str:
+    """Build a structural outline of a file showing key sections with line ranges."""
+    import re
+    ext = os.path.splitext(path)[1].lower()
+    sections: list[str] = []
+
+    # Try AST for Python files
+    if ext == ".py":
+        try:
+            import ast
+            source = "".join(lines)
+            tree = ast.parse(source)
+            for node in ast.iter_child_nodes(tree):
+                if isinstance(node, ast.ClassDef):
+                    methods = [n for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+                    method_info = ", ".join(m.name for m in methods[:8])
+                    if len(methods) > 8:
+                        method_info += f", ... +{len(methods) - 8} more"
+                    sections.append(f"  L{node.lineno}-{node.end_lineno}: class {node.name} ({len(methods)} methods: {method_info})")
+                elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    sections.append(f"  L{node.lineno}-{node.end_lineno}: def {node.name}()")
+                elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                    if not sections or not sections[-1].startswith("  L") or "import" not in sections[-1]:
+                        # Group consecutive imports
+                        sections.append(f"  L{node.lineno}: imports")
+            if sections:
+                return "\n".join(sections)
+        except Exception:
+            pass  # Fall through to regex-based outline
+
+    # Regex-based outline for all languages
+    patterns = [
+        (r'^(class|struct|interface|enum|type)\s+(\w+)', 'class'),
+        (r'^(def|async def|function|async function|pub fn|fn)\s+(\w+)', 'function'),
+        (r'^(export\s+)?(default\s+)?(class|function|const|let|var)\s+(\w+)', 'export'),
+        (r'^#{1,3}\s+(.+)', 'heading'),  # Markdown headings
+    ]
+    for i, line in enumerate(lines, 1):
+        stripped = line.strip()
+        for pat, kind in patterns:
+            m = re.match(pat, stripped)
+            if m:
+                sections.append(f"  L{i}: {stripped[:80]}")
+                break
+
+    if not sections:
+        # Fallback: show every ~50 lines as a section marker
+        for i in range(0, len(lines), 50):
+            preview = lines[i].strip()[:60]
+            sections.append(f"  L{i+1}: {preview}")
+
+    return "\n".join(sections[:60])
 
 
 @tool(
@@ -78,10 +149,7 @@ def _format_directory_listing(resolved: str) -> str:
 
 @tool(
     name="list_directory",
-    description=(
-        "List files and directories. Workspace-relative paths stay under the project. "
-        "Absolute paths may point outside the workspace (e.g. Desktop) for read-only listing; use import_external_file to copy files in."
-    ),
+    description="List files and directories at any path. Relative paths resolve against the workspace. Absolute paths work anywhere.",
     parameters={
         "type": "object",
         "properties": {
@@ -91,16 +159,7 @@ def _format_directory_listing(resolved: str) -> str:
     },
 )
 def list_directory(path: str = ".") -> str:
-    if os.path.isabs(path):
-        resolved = os.path.abspath(os.path.normpath(path))
-        if not is_path_inside_workspace(resolved):
-            if not os.path.isdir(resolved):
-                return f"Error: Not a directory: {path}"
-            return _format_directory_listing(resolved)
-        # absolute but still under workspace — same as _resolve
-        resolved = _resolve(path)
-    else:
-        resolved = _resolve(path)
+    resolved = _resolve(path)
     if not os.path.isdir(resolved):
         return f"Error: Not a directory: {path}"
     return _format_directory_listing(resolved)

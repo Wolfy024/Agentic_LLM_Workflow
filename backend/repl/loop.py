@@ -25,6 +25,8 @@ _slash_completer = SlashCommandCompleter(SLASH_COMMAND_SPECS)
 
 
 def run_repl(runner: AgentRunner, watch_ctx: dict, config: dict, prefs: dict):
+    # Ensure the history directory exists so FileHistory can write on first use
+    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
     try:
         history = FileHistory(HISTORY_FILE)
     except Exception:

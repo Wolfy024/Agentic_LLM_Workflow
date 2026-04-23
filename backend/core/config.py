@@ -15,6 +15,16 @@ from ui.palette import warning
 from ui.context_logs import print_error
 
 
+def get_root_dir() -> Path:
+    from pathlib import Path
+    if getattr(sys, 'frozen', False):
+        exe_dir = Path(sys.executable).parent
+        if (exe_dir / "config.json").exists():
+            return exe_dir
+        return Path(sys._MEIPASS)
+    return Path(__file__).parent.parent.parent
+
+
 def resolve_env(value: str) -> str:
     """
     Resolve 'env:VAR_NAME' strings to environment variable values.
@@ -27,36 +37,31 @@ def resolve_env(value: str) -> str:
     """
     if isinstance(value, str) and value.startswith("env:"):
         var_name = value[4:]
-        env_val = os.environ.get(var_name)
-        if not env_val:
-            console.print(warning(
-                f"  env var {var_name} not set -- "
-                f"set it or put the key directly in config.json"
-            ))
-            return ""
-        return env_val
+        return os.environ.get(var_name, "")
     return value
 
 
 def load_dotenv() -> None:
     """
-    Load .env file from the script directory if it exists, injecting 
-    values into os.environ.
+    Load .env file from the project root using python-dotenv.
     """
-    env_path = os.path.join(os.getcwd(), ".env")
-    if not os.path.exists(env_path):
-        return
-    with open(env_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            key, val = key.strip(), val.strip()
-            if val and val[0] in ('"', "'") and val[-1] == val[0]:
-                val = val[1:-1]
-            if key not in os.environ:
-                os.environ[key] = val
+    try:
+        import dotenv
+        from pathlib import Path
+        import sys
+        
+        env_path = get_root_dir() / ".env"
+        
+        # In frozen mode, explicitly check next to the executable as well
+        if getattr(sys, 'frozen', False):
+            exe_env = Path(sys.executable).parent / ".env"
+            if exe_env.exists():
+                env_path = exe_env
+                
+        if env_path.exists():
+            dotenv.load_dotenv(str(env_path), override=False)
+    except ImportError:
+        pass  # python-dotenv not installed — skip silently
 
 
 def load_config() -> dict:
@@ -66,8 +71,11 @@ def load_config() -> dict:
     Returns:
         dict: The loaded configuration dictionary.
     """
-    config_path = os.path.join(os.getcwd(), "config.json")
-    if not os.path.exists(config_path):
+    load_dotenv()
+    
+    root_dir = get_root_dir()
+    config_path = root_dir / "config.json"
+    if not config_path.exists():
         print_error(f"Config not found: {config_path}")
         sys.exit(1)
     try:
@@ -77,9 +85,12 @@ def load_config() -> dict:
         print_error(f"Invalid JSON in config.json: {e}")
         sys.exit(1)
 
-    for key in ("api_key", "serper_api_key"):
+    for key in ("api_base", "sd_api_base", "api_key", "serper_api_key"):
         if key in config:
-            config[key] = resolve_env(config[key])
+            raw = config[key]
+            config[key] = resolve_env(raw)
+            if isinstance(raw, str) and raw.startswith("env:") and not config[key]:
+                console.print(warning(f"  env var {raw[4:]} not set -- set it or put the key directly in config.json"))
 
     config.setdefault("profile", "strict")
     if config["profile"] not in ("strict", "dev", "ci"):

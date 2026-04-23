@@ -10,8 +10,12 @@ import os
 import json
 from ui.context_logs import print_auto_compact
 from agent.tokens import estimate_tokens, message_tokens
+from core.prefs import PREFS_DIR
+import core.runtime_config as rc
 
-SESSIONS_DIR = os.path.join(os.path.expanduser("~"), ".minillm", "sessions")
+def get_sessions_dir() -> str:
+    from tools.registry import WORKSPACE
+    return os.path.join(WORKSPACE, "sessions")
 
 
 def _content_preview(content, n: int) -> str:
@@ -56,7 +60,8 @@ class SessionState:
         used = self.context_used(api_usage)
         limit = self.context_window - self.max_output
         pct = used / limit if limit > 0 else 1.0
-        if pct < 0.80 or len(self.messages) <= 4:
+        compact_pct = float(rc.get("auto_compact_pct", 0.80))
+        if pct < compact_pct or len(self.messages) <= 4:
             return
 
         summary_prompt = (
@@ -82,26 +87,36 @@ class SessionState:
             self.messages.insert(1, {"role": "system", "content": f"[Earlier conversation summary: {summary}]"})
 
         freed = before - len(self.messages)
-        new_pct = self.context_used(api_usage) / limit
+        # Use estimate-based counting after compact — api_usage is stale
+        new_pct = self.context_used(None) / limit if limit > 0 else 0
         print_auto_compact(freed, pct, new_pct)
 
 
-def save_session(state: SessionState, name: str) -> str:
-    """Persist session state to JSON."""
-    os.makedirs(SESSIONS_DIR, exist_ok=True)
-    path = os.path.join(SESSIONS_DIR, f"{name}.json")
+def save_session(state: SessionState, name: str, model: str = "") -> str:
+    """Persist session state to JSON, including model and system prompt."""
+    s_dir = get_sessions_dir()
+    os.makedirs(s_dir, exist_ok=True)
+    path = os.path.join(s_dir, f"{name}.json")
+    payload = {
+        "messages": state.messages,
+        "tool_call_count": state.tool_call_count,
+        "model": model,
+        "system_prompt": state.system_prompt,
+    }
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"messages": state.messages, "tool_call_count": state.tool_call_count}, f, indent=2)
+        json.dump(payload, f, indent=2)
     return path
 
 
-def load_session(state: SessionState, name: str) -> str:
-    """Hydrate session state from JSON."""
-    path = os.path.join(SESSIONS_DIR, f"{name}.json")
+def load_session(state: SessionState, name: str) -> tuple[str, str]:
+    """Hydrate session state from JSON. Returns (path_or_error, saved_model)."""
+    s_dir = get_sessions_dir()
+    path = os.path.join(s_dir, f"{name}.json")
     if not os.path.exists(path):
-        return f"Session not found: {path}"
+        return f"Session not found: {path}", ""
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     state.messages = data.get("messages", [])
     state.tool_call_count = data.get("tool_call_count", 0)
-    return path
+    saved_model = data.get("model", "")
+    return path, saved_model

@@ -12,7 +12,14 @@ from typing import Any
 TOOL_REGISTRY: dict[str, tuple[Any, dict]] = {}
 WORKSPACE: str = os.getcwd()
 
-MAX_READ_SIZE = 1_048_576  # 1 MB default limit for file reads
+
+def _max_read_size() -> int:
+    """Get max file read size in bytes from config (default 1 MB)."""
+    import core.runtime_config as rc
+    return int(rc.get("max_read_size_mb", 1)) * 1_048_576
+
+
+MAX_READ_SIZE = 1_048_576  # module-level default; use _max_read_size() at runtime
 
 
 def set_workspace(path: str):
@@ -21,14 +28,11 @@ def set_workspace(path: str):
 
 
 def _resolve(path: str) -> str:
-    """Resolve a path relative to the workspace, confined to WORKSPACE root."""
+    """Resolve a path. Absolute paths are used as-is; relative paths resolve against WORKSPACE."""
     if os.path.isabs(path):
         resolved = os.path.normpath(path)
     else:
         resolved = os.path.normpath(os.path.join(WORKSPACE, path))
-    ws = os.path.normpath(WORKSPACE)
-    if not resolved.startswith(ws + os.sep) and resolved != ws:
-        raise PermissionError(f"Path escapes workspace: {path} (resolved: {resolved}, workspace: {ws})")
     return resolved
 
 

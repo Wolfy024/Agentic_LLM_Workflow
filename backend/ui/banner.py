@@ -50,10 +50,38 @@ def build_antigravity_banner() -> Panel:
     )
 
 
+def build_goodbye_banner() -> Panel:
+    """Dynamically build the centered ASCII art goodbye banner."""
+    logo_text = [
+        "  ___ ___ ___  __   _____  _   _   ___  ___   ___  _  _  ",
+        " / __| __| __| \\ \\ / / _ \\| | | | / __|/ _ \\ / _ \\| \\| | ",
+        " \\__ \\ _|| _|   \\ V / (_) | |_| | \\__ \\ (_) | (_) | .` | ",
+        " |___/___|___|   |_| \\___/ \\___/  |___/\\___/ \\___/|_|\\_| "
+    ]
+    colors = ["#6C63FF", "#4A8CFF", "#28B4FF", "#00D9FF"]
+    group = Group()
+    for row, color in zip(logo_text, colors):
+        group.renderables.append(Text(row, style=f"bold {color}", justify="center"))
+    
+    group.renderables.append(Text(""))
+    subtitle = Text("H A V E   F U N !", justify="center")
+    subtitle.stylize("bold #E5E7EB")
+    group.renderables.append(subtitle)
+    
+    return Panel(
+        group,
+        box=box.ROUNDED,
+        border_style="#4B5563",
+        padding=(1, 4),
+        expand=False
+    )
+
+
 def print_banner(config: dict, workspace: str, session_name: str | None = None) -> None:
     """Print the startup banner sequence along with session config stats."""
-    banner_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "startup_banner.txt")
-    if os.path.exists(banner_path):
+    from core.config import get_root_dir
+    banner_path = get_root_dir() / "startup_banner.txt"
+    if banner_path.exists():
         with open(banner_path, "r", encoding="utf-8") as f:
             banner_content = f.read()
         sys.stdout.write(banner_content)

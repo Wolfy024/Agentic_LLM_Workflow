@@ -10,8 +10,23 @@ import time
 import httpx
 
 from llm.errors import LLMError, classify_error
+import core.runtime_config as rc
 
-REQUEST_TIMEOUT = 300.0
+
+def _request_timeout():
+    return float(rc.get("request_timeout", 300))
+
+def _connect_timeout():
+    return float(rc.get("connect_timeout", 20))
+
+def _max_retries():
+    return int(rc.get("max_retries", 3))
+
+def _retry_backoff():
+    return float(rc.get("retry_backoff_base", 2.0))
+
+# Module-level aliases for import by stream.py
+REQUEST_TIMEOUT = 300.0   # default; actual values read dynamically
 CONNECT_TIMEOUT = 20.0
 MAX_RETRIES = 3
 RETRY_BACKOFF_BASE = 2.0
@@ -42,12 +57,24 @@ class LLMClient:
         self.on_retry = on_retry
         self.parallel = parallel_tool_calls
         self.last_usage: dict | None = None
-        self.client = httpx.Client(timeout=httpx.Timeout(REQUEST_TIMEOUT, connect=CONNECT_TIMEOUT))
+        # Use HTTP/2 if available (pip install h2) — better streaming performance
+        req_t, con_t = _request_timeout(), _connect_timeout()
+        try:
+            self.client = httpx.Client(
+                timeout=httpx.Timeout(req_t, connect=con_t),
+                http2=True,
+            )
+        except Exception:
+            self.client = httpx.Client(
+                timeout=httpx.Timeout(req_t, connect=con_t),
+            )
 
     def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
         payload = build_payload(self.model, self.max_tokens, self.temperature, self.parallel, messages, tools)
         last_err = None
-        for attempt in range(MAX_RETRIES):
+        retries = _max_retries()
+        backoff = _retry_backoff()
+        for attempt in range(retries):
             try:
                 resp = self.client.post(
                     f"{self.api_base}/chat/completions",
@@ -61,9 +88,9 @@ class LLMClient:
             except Exception as e:
                 err = classify_error(e)
                 last_err = err
-                if err.retryable and attempt < MAX_RETRIES - 1:
-                    wait = RETRY_BACKOFF_BASE ** attempt
-                    if self.on_retry: self.on_retry(attempt + 1, MAX_RETRIES, str(err), wait)
+                if err.retryable and attempt < retries - 1:
+                    wait = backoff ** attempt
+                    if self.on_retry: self.on_retry(attempt + 1, retries, str(err), wait)
                     time.sleep(wait)
                     continue
                 raise err from e

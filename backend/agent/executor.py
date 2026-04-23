@@ -23,10 +23,12 @@ from core.permissions_prompts import ask_edit_confirmation, ask_permission
 from tools.fs.edit import preview_replace_in_file, preview_patch_file
 
 _PARALLEL_SAFE_TOOLS = {
-    "read_file", "search_files", "find_files", "list_directory", "file_info",
+    "read_file", "read_json", "search_files", "find_files", "list_directory",
+    "file_info", "tree", "diff_files", "summarize_code", "count_tokens_estimate",
+    "read_external_file", "view_image",
     "git_status", "git_log", "git_diff", "git_search", "git_blame", "git_show",
     "read_url", "web_search", "web_search_news", "web_search_images",
-    "github_api", "summarize_code", "count_tokens_estimate"
+    "github_api",
 }
 
 

@@ -21,16 +21,22 @@ from ._subprocess_utf8 import UTF8_TEXT_KWARGS, err_strip, out_strip
         "required": ["command"],
     },
 )
-def run_command(command: str, cwd: str | None = None, timeout: int = 30) -> str:
+def run_command(command: str, cwd: str | None = None, timeout: int | None = None) -> str:
+    import core.runtime_config as rc
+    if timeout is None:
+        timeout = int(rc.get("command_timeout", 30))
     resolved_cwd = _resolve(cwd) if cwd else WORKSPACE
-    result = subprocess.run(
-        command,
-        shell=True,
-        cwd=resolved_cwd,
-        capture_output=True,
-        timeout=timeout,
-        **UTF8_TEXT_KWARGS,
-    )
+    try:
+        result = subprocess.run(
+            command,
+            shell=True,
+            cwd=resolved_cwd,
+            capture_output=True,
+            timeout=timeout,
+            **UTF8_TEXT_KWARGS,
+        )
+    except subprocess.TimeoutExpired:
+        return f"[timeout after {timeout}s] Command was killed. Use a higher timeout parameter (e.g. timeout=120)."
     output = out_strip(result)
     err = err_strip(result)
     combined = output

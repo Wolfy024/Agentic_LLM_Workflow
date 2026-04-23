@@ -49,8 +49,11 @@ def find_files(pattern: str, path: str = ".") -> str:
         "required": ["pattern"],
     },
 )
-def search_files(pattern: str, path: str = ".", file_pattern: str | None = None, max_results: int = 50) -> str:
+def search_files(pattern: str, path: str = ".", file_pattern: str | None = None, max_results: int | None = None) -> str:
     import re
+    import core.runtime_config as rc
+    if max_results is None:
+        max_results = int(rc.get("max_search_results", 50))
     resolved = _resolve(path)
     regex = re.compile(pattern, re.IGNORECASE)
     results = []
@@ -156,7 +159,7 @@ def summarize_code(path: str) -> str:
 
 @tool(
     name="count_tokens_estimate",
-    description="Rough token count estimate for a file or text (words/0.75).",
+    description="Rough token count estimate for a file or text (~4 chars per token).",
     parameters={
         "type": "object",
         "properties": {
@@ -173,7 +176,6 @@ def count_tokens_estimate(path: str | None = None, text: str | None = None) -> d
             text = f.read()
     if not text:
         return {"error": "Provide path or text"}
-    words = len(text.split())
     chars = len(text)
-    estimated_tokens = int(words / 0.75)
-    return {"chars": chars, "words": words, "estimated_tokens": estimated_tokens}
+    estimated_tokens = chars // 4
+    return {"chars": chars, "words": len(text.split()), "estimated_tokens": estimated_tokens}

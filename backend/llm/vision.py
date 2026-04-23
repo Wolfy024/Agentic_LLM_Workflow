@@ -9,8 +9,13 @@ from __future__ import annotations
 import base64
 import mimetypes
 import os
+import core.runtime_config as rc
 
 _DEFAULT_MAX_BYTES = 20 * 1024 * 1024
+
+
+def _max_image_bytes() -> int:
+    return int(rc.get("max_image_mb", 20)) * 1024 * 1024
 
 # Prefer explicit MIME; guess_type is fallback.
 _EXT_MIME = {
@@ -29,7 +34,7 @@ def build_user_content_with_image(
     instruction: str,
     resolved_path: str,
     *,
-    max_bytes: int = _DEFAULT_MAX_BYTES,
+    max_bytes: int | None = None,
     detail: str | None = "auto",
 ) -> list[dict]:
     """
@@ -38,6 +43,8 @@ def build_user_content_with_image(
     Raises:
         ValueError: empty file, unknown type, or over ``max_bytes``.
     """
+    if max_bytes is None:
+        max_bytes = _max_image_bytes()
     ext = os.path.splitext(resolved_path)[1].lower()
     mime = _EXT_MIME.get(ext)
     if not mime:

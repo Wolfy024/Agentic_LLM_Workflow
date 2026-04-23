@@ -46,7 +46,9 @@ def ask_edit_confirmation(path: str, diff_text: str) -> bool:
         return True
     console.print()
     console.print(f"  {styled('!', C_WARNING)} {warning('edit preview')} {muted(path)}")
-    preview = diff_text if len(diff_text) <= 6000 else diff_text[:6000] + "\n... (truncated)"
+    import core.runtime_config as rc
+    limit = int(rc.get("diff_preview_limit", 6000))
+    preview = diff_text if len(diff_text) <= limit else diff_text[:limit] + "\n... (truncated)"
     for line in preview.splitlines():
         console.print(f"    {muted(line)}")
     console.print()

@@ -10,11 +10,10 @@ import json
 
 
 def estimate_tokens(text: str) -> int:
-    """Rough heuristic: 1 token ~= 4 chars or 0.75 words."""
+    """Rough heuristic: 1 token ~= 4 chars (more accurate for code than word-based)."""
     if not text:
         return 0
-    words = len(text.split())
-    return int(words / 0.75)
+    return len(text) // 4
 
 
 def message_tokens(msg: dict) -> int:

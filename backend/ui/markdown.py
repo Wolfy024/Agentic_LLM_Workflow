@@ -12,6 +12,34 @@ from ui.console import console
 from ui.palette import primary
 
 
+def preprocess_latex(text: str) -> str:
+    """Convert LaTeX math expressions for Rich rendering.
+
+    Rich's Markdown renderer doesn't support LaTeX, so we strip the
+    $$/$ delimiters and display the raw LaTeX source as styled text.
+    This makes formulas readable without being wrapped in code blocks.
+
+      - Block math $$...$$ → displayed as-is (delimiters stripped)
+      - Inline math $...$  → displayed as-is (delimiters stripped)
+    """
+    # Handle escaped dollars \$...\$ by temporarily replacing them
+    text = text.replace("\\$", "\x00ESCAPED_DOLLAR\x00")
+
+    # Handle block math $$...$$ — strip delimiters, keep content as-is
+    text = re.sub(
+        r"\$\$([\s\S]*?)\$\$",
+        lambda m: "\n" + m.group(1).strip() + "\n",
+        text,
+    )
+
+    # Handle inline math $...$ — strip delimiters, keep content as-is
+    text = re.sub(r"\$([^$\n]+?)\$", r"\1", text)
+
+    # Restore escaped dollars
+    text = text.replace("\x00ESCAPED_DOLLAR\x00", "\\$")
+    return text
+
+
 def merge_stream_chunk(buffer: str, piece: str) -> str:
     """Combine a streaming chunk with the buffer securely."""
     if not piece: return buffer
@@ -55,6 +83,7 @@ def dedupe_stream_text(text: str) -> str:
 
 def render_markdown(text: str) -> None:
     """Render a complete markdown string structurally."""
+    text = preprocess_latex(text)
     console.print()
     console.print(Padding(Markdown(text, code_theme="monokai"), (0, 0, 0, 4)))
     console.print()

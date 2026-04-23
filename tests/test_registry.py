@@ -17,9 +17,10 @@ def test_resolve_absolute_inside_workspace(tmp_path):
     assert p == str(inner / "x.py")
 
 
-def test_resolve_escapes_workspace(tmp_path):
+def test_resolve_absolute_outside_workspace(tmp_path):
+    """Absolute paths outside workspace should resolve without error (full access mode)."""
     set_workspace(str(tmp_path))
-    outside = tmp_path.parent / "outside_secret"
+    outside = tmp_path.parent / "outside_dir"
     outside.mkdir(exist_ok=True)
-    with pytest.raises(PermissionError, match="escapes workspace"):
-        _resolve(str(outside / "evil.txt"))
+    p = _resolve(str(outside / "file.txt"))
+    assert p == str(outside / "file.txt")

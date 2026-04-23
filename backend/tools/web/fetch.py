@@ -15,7 +15,11 @@ import httpx
 from tools.registry import tool, _resolve
 
 # Cap downloads to avoid filling disk / memory (streaming; enforced while reading).
-MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
+def _max_download_bytes() -> int:
+    import core.runtime_config as rc
+    return int(rc.get("max_download_mb", 100)) * 1024 * 1024
+
+MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # module-level default
 
 
 def _validate_http_url(url: str) -> None:
@@ -114,11 +118,12 @@ def download_url(url: str, path: str) -> str:
         ) as resp:
             resp.raise_for_status()
             with open(resolved, "wb") as out:
+                limit = _max_download_bytes()
                 for chunk in resp.iter_bytes(chunk_size=64 * 1024):
                     written += len(chunk)
-                    if written > MAX_DOWNLOAD_BYTES:
+                    if written > limit:
                         raise ValueError(
-                            f"Download exceeded max size ({MAX_DOWNLOAD_BYTES // (1024 * 1024)} MiB)"
+                            f"Download exceeded max size ({limit // (1024 * 1024)} MiB)"
                         )
                     out.write(chunk)
     except Exception:

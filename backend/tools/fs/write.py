@@ -24,7 +24,9 @@ from tools.registry import tool, _resolve
 )
 def write_file(path: str, content: str) -> str:
     resolved = _resolve(path)
-    os.makedirs(os.path.dirname(resolved) or ".", exist_ok=True)
+    parent = os.path.dirname(resolved)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
     with open(resolved, "w", encoding="utf-8") as f:
         f.write(content)
     return f"Wrote {len(content)} bytes to {path}"
@@ -44,7 +46,9 @@ def write_file(path: str, content: str) -> str:
 )
 def append_to_file(path: str, content: str) -> str:
     resolved = _resolve(path)
-    os.makedirs(os.path.dirname(resolved) or ".", exist_ok=True)
+    parent = os.path.dirname(resolved)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
     with open(resolved, "a", encoding="utf-8") as f:
         f.write(content)
     return f"Appended {len(content)} bytes to {path}"

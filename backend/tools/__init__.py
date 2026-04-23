@@ -27,6 +27,7 @@ _TOOL_SUBMODULES = (
     ".fs.edit",
     ".fs.search",
     ".fs.external",
+    ".fs.image",
     ".git.core",
     ".git.diff",
     ".git.info",
@@ -36,6 +37,7 @@ _TOOL_SUBMODULES = (
     ".web.serper",
     ".web.fetch",
     ".system",
+    ".image_gen",
 )
 
 for _sub in _TOOL_SUBMODULES:

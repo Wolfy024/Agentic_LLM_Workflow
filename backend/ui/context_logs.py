@@ -67,4 +67,8 @@ def print_error(msg: str) -> None:
 
 def print_goodbye() -> None:
     """Exit notification."""
+    from ui.banner import build_goodbye_banner
+    from rich.align import Align
+    console.print()
+    console.print(Align.center(build_goodbye_banner()))
     console.print(f"\n  {muted('goodbye.')}\n")

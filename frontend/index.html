@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Orchestrator — AI Coding Agent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind.config.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="bg-background text-foreground font-sans antialiased overflow-x-hidden">
+
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/50">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <span class="font-bold text-lg tracking-tight">LLM Orchestrator</span>
+      </div>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#features" class="nav-link text-sm text-muted-foreground hover:text-foreground">Features</a>
+        <a href="#architecture" class="nav-link text-sm text-muted-foreground hover:text-foreground">Architecture</a>
+        <a href="#binary" class="nav-link text-sm text-muted-foreground hover:text-foreground">Binary Build</a>
+        <a href="#docs" class="nav-link text-sm text-muted-foreground hover:text-foreground">Docs</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/Wolfy024/Agentic_LLM_Workflow" target="_blank" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <a href="../dist/orchestrator-setup.exe" download class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-primary-foreground flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4 4m4 4V4"/></svg>
+          Download Installer
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="relative min-h-screen flex items-center justify-center pt-16 grid-bg overflow-hidden">
+    <!-- Background glows -->
+    <div class="hero-glow bg-indigo-600 top-1/4 -left-48"></div>
+    <div class="hero-glow bg-purple-600 bottom-1/4 -right-48"></div>
+    <div class="hero-glow bg-pink-600 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-6 py-32 text-center">
+      <!-- Badge -->
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/50 bg-secondary/50 text-sm text-muted-foreground mb-8 animate-fade-in">
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        Open Source · MIT Licensed · Python 3.10+
+      </div>
+
+      <!-- Main heading -->
+      <h1 class="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight mb-6 animate-fade-in-slow">
+        Your AI-Powered<br/>
+        <span class="gradient-text">Coding Agent</span>
+      </h1>
+
+      <!-- Subtitle -->
+      <p class="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed animate-fade-in-slow" style="animation-delay: 0.2s">
+        A local-first coding agent with full tool access, autonomous reasoning, git integration, and a powerful REPL interface. Build, ship, and iterate — powered by LLMs.
+      </p>
+
+      <!-- CTA Buttons -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-in-slow" style="animation-delay: 0.4s">
+        <a href="https://github.com/Wolfy024/Agentic_LLM_Workflow" target="_blank" class="btn-primary px-8 py-4 rounded-xl text-base font-semibold text-primary-foreground flex items-center gap-3">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+        <a href="#features" class="btn-secondary px-8 py-4 rounded-xl text-base font-semibold flex items-center gap-2">
+          Explore Features
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </a>
+      </div>
+
+      <!-- Terminal Preview -->
+      <div class="max-w-4xl mx-auto animate-fade-in-slow" style="animation-delay: 0.6s">
+        <div class="code-block rounded-2xl overflow-hidden terminal-glow">
+          <!-- Terminal header -->
+          <div class="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-black/40">
+            <div class="flex gap-1.5">
+              <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+            </div>
+            <span class="text-xs text-muted-foreground ml-2 font-mono">~/projects/llm-orchestrator</span>
+          </div>
+          <!-- Terminal body -->
+          <div class="p-6 font-mono text-sm text-left space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="text-green-400">❯</span>
+              <span class="text-foreground">python main.py --model anthropic/claude-3.5-sonnet</span>
+            </div>
+            <div class="text-muted-foreground">
+              <span class="text-indigo-400">[info]</span> LLM Orchestrator v1.0.0 — Agent loop initialized
+            </div>
+            <div class="text-muted-foreground">
+              <span class="text-indigo-400">[info]</span> Tools loaded: fs, git, github, web, image_gen
+            </div>
+            <div class="text-muted-foreground">
+              <span class="text-indigo-400">[info]</span> Context window: 262,144 tokens
+            </div>
+            <div class="text-muted-foreground">
+              <span class="text-indigo-400">[info]</span> Permission profile: <span class="text-yellow-400">strict</span>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <span class="text-purple-400">❯</span>
+              <span class="text-foreground">refactor the auth module to use JWT tokens</span>
+            </div>
+            <div class="text-muted-foreground">
+              <span class="text-indigo-400">[agent]</span> Analyzing auth module... Found 3 files to modify
+            </div>
+            <div class="text-muted-foreground">
+              <span class="text-indigo-400">[agent]</span> Reading auth_service.py → auth_models.py → auth_middleware.py
+            </div>
+            <div class="text-muted-foreground">
+              <span class="text-indigo-400">[agent]</span> Applying JWT token pattern across 3 files...
+            </div>
+            <div class="text-muted-foreground">
+              <span class="text-green-400">✓</span> <span class="text-foreground">3 files modified, 2 tests passing</span>
+            </div>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="text-purple-400">❯</span>
+              <span class="animate-pulse">▊</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="relative py-20 border-y border-border/30">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="stat-card rounded-2xl p-6 text-center scroll-reveal">
+          <div class="text-3xl md:text-4xl font-black gradient-text mb-1">12+</div>
+          <div class="text-sm text-muted-foreground">Tool Integrations</div>
+        </div>
+        <div class="stat-card rounded-2xl p-6 text-center scroll-reveal" style="transition-delay: 0.1s">
+          <div class="text-3xl md:text-4xl font-black gradient-text mb-1">262K</div>
+          <div class="text-sm text-muted-foreground">Token Context Window</div>
+        </div>
+        <div class="stat-card rounded-2xl p-6 text-center scroll-reveal" style="transition-delay: 0.2s">
+          <div class="text-3xl md:text-4xl font-black gradient-text mb-1">6</div>
+          <div class="text-sm text-muted-foreground">Git Operations</div>
+        </div>
+        <div class="stat-card rounded-2xl p-6 text-center scroll-reveal" style="transition-delay: 0.3s">
+          <div class="text-3xl md:text-4xl font-black gradient-text mb-1">MIT</div>
+          <div class="text-sm text-muted-foreground">Open Source License</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="relative py-32">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-20 scroll-reveal">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/50 bg-secondary/50 text-xs text-muted-foreground mb-4">
+          FEATURES
+        </div>
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">Everything you need to<br/><span class="gradient-text">build with AI</span></h2>
+        <p class="text-muted-foreground text-lg max-w-2xl mx-auto">A comprehensive toolkit for autonomous coding agents, from file manipulation to git operations and beyond.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div class="glass-card rounded-2xl p-8 scroll-reveal">
+          <div class="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3">Autonomous Agent Loop</h3>
+          <p class="text-muted-foreground leading-relaxed">Self-directed reasoning with tool use, retry logic, and streaming responses. The agent plans, executes, and adapts in real-time.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="glass-card rounded-2xl p-8 scroll-reveal" style="transition-delay: 0.1s">
+          <div class="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3">Rich REPL Interface</h3>
+          <p class="text-muted-foreground leading-relaxed">Interactive terminal with slash commands — <code class="text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded text-sm">/model</code>, <code class="text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded text-sm">/watch</code>, <code class="text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded text-sm">/yolo</code> and more.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="glass-card rounded-2xl p-8 scroll-reveal" style="transition-delay: 0.2s">
+          <div class="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3">12+ Tool Integrations</h3>
+          <p class="text-muted-foreground leading-relaxed">File system, git, GitHub API, web search, image generation, URL fetching, and subprocess execution — all at the agent's fingertips.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="glass-card rounded-2xl p-8 scroll-reveal" style="transition-delay: 0.3s">
+          <div class="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3">Permission Profiles</h3>
+          <p class="text-muted-foreground leading-relaxed">Three safety levels — <code class="text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded text-sm">strict</code>, <code class="text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded text-sm">dev</code>, <code class="text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded text-sm">ci</code> — control what the agent can do.</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="glass-card rounded-2xl p-8 scroll-reveal" style="transition-delay: 0.4s">
+          <div class="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3">Watch Mode</h3>
+          <p class="text-muted-foreground leading-relaxed">Auto-reload on file changes with <code class="text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded text-sm">auto</code> or <code class="text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded text-sm">batch</code> strategies. Never miss a change.</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="glass-card rounded-2xl p-8 scroll-reveal" style="transition-delay: 0.5s">
+          <div class="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3">Full Git Integration</h3>
+          <p class="text-muted-foreground leading-relaxed">Branches, commits, diffs, blame, remotes, tags, and GitHub API — the agent can manage your entire git workflow.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture Section -->
+  <section id="architecture" class="relative py-32 border-t border-border/30">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid lg:grid-cols-2 gap-16 items-center">
+        <div class="scroll-reveal">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/50 bg-secondary/50 text-xs text-muted-foreground mb-4">
+            ARCHITECTURE
+          </div>
+          <h2 class="text-4xl md:text-5xl font-bold mb-6">Modular by design,<br/><span class="gradient-text">powerful by default</span></h2>
+          <p class="text-muted-foreground text-lg mb-8 leading-relaxed">Clean separation of concerns across agent logic, LLM communication, REPL interface, tools, and terminal UI. Each module is independently testable and extensible.</p>
+
+          <div class="space-y-4">
+            <div class="flex items-start gap-4">
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-indigo-400 text-sm font-bold">1</span>
+              </div>
+              <div>
+                <h4 class="font-semibold mb-1">Agent Core</h4>
+                <p class="text-sm text-muted-foreground">Executor, runner, state management, and file watching service</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-purple-400 text-sm font-bold">2</span>
+              </div>
+              <div>
+                <h4 class="font-semibold mb-1">LLM Client</h4>
+                <p class="text-sm text-muted-foreground">Streaming responses, error handling, vision support, and retry logic</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-pink-400 text-sm font-bold">3</span>
+              </div>
+              <div>
+                <h4 class="font-semibold mb-1">Tool Registry</h4>
+                <p class="text-sm text-muted-foreground">12+ tools across file system, git, GitHub, web, and image generation</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-cyan-400 text-sm font-bold">4</span>
+              </div>
+              <div>
+                <h4 class="font-semibold mb-1">Terminal UI</h4>
+                <p class="text-sm text-muted-foreground">Rich markdown rendering, streaming output, and interactive REPL</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="scroll-reveal" style="transition-delay: 0.2s">
+          <div class="code-block rounded-2xl p-6 font-mono text-sm">
+            <div class="text-muted-foreground mb-4">// Project Structure</div>
+            <div class="text-muted-foreground leading-relaxed">
+              <span class="text-indigo-400">├──</span> main.py <span class="text-muted-foreground"># Entrypoint</span><br/>
+              <span class="text-indigo-400">├──</span> <span class="text-purple-400">agent/</span> <span class="text-muted-foreground"># Agent loop, executor, state</span><br/>
+              <span class="text-muted-foreground pl-4">│   ├──</span> executor.py<br/>
+              <span class="text-muted-foreground pl-4">│   ├──</span> runner.py<br/>
+              <span class="text-muted-foreground pl-4">│   ├──</span> state.py<br/>
+              <span class="text-muted-foreground pl-4">│   └──</span> <span class="text-purple-400">watch/</span> <span class="text-muted-foreground"># File watcher</span><br/>
+              <span class="text-indigo-400">├──</span> <span class="text-pink-400">core/</span> <span class="text-muted-foreground"># Bootstrap, config, prefs</span><br/>
+              <span class="text-indigo-400">├──</span> <span class="text-cyan-400">llm/</span> <span class="text-muted-foreground"># Client, streaming, errors</span><br/>
+              <span class="text-indigo-400">├──</span> <span class="text-amber-400">repl/</span> <span class="text-muted-foreground"># REPL loop & commands</span><br/>
+              <span class="text-indigo-400">├──</span> <span class="text-green-400">tools/</span> <span class="text-muted-foreground"># Tool implementations</span><br/>
+              <span class="text-muted-foreground pl-4">├──</span> <span class="text-purple-400">fs/</span> <span class="text-muted-foreground"># File operations</span><br/>
+              <span class="text-muted-foreground pl-4">├──</span> <span class="text-purple-400">git/</span> <span class="text-muted-foreground"># Git & GitHub API</span><br/>
+              <span class="text-muted-foreground pl-4">└──</span> <span class="text-purple-400">web/</span> <span class="text-muted-foreground"># Fetch & search</span><br/>
+              <span class="text-indigo-400">├──</span> <span class="text-emerald-400">ui/</span> <span class="text-muted-foreground"># Terminal UI components</span><br/>
+              <span class="text-indigo-400">└──</span> scan.py <span class="text-muted-foreground"># AST scanner</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Binary Build Section -->
+  <section id="binary" class="relative py-32 border-t border-border/30">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-20 scroll-reveal">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/50 bg-secondary/50 text-xs text-muted-foreground mb-4">
+          DEPLOYMENT
+        </div>
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">Ship as a <span class="gradient-text">single binary</span></h2>
+        <p class="text-muted-foreground text-lg max-w-2xl mx-auto">Distribute your agent as a standalone executable — no Python installation required. Choose your build tool.</p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6 mb-16">
+        <!-- PyInstaller -->
+        <div class="glass-card rounded-2xl p-8 binary-option scroll-reveal">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </div>
+            <h3 class="text-xl font-bold">PyInstaller</h3>
+          </div>
+          <div class="text-sm text-muted-foreground mb-4">Most popular, best dependency detection</div>
+          <div class="code-block rounded-lg p-3 font-mono text-xs mb-4">
+            <span class="text-green-400">$</span> pip install pyinstaller<br/>
+            <span class="text-green-400">$</span> pyinstaller --onefile main.py
+          </div>
+          <ul class="space-y-2 text-sm text-muted-foreground">
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Single file output</li>
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Auto-detects dependencies</li>
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Cross-platform builds</li>
+          </ul>
+        </div>
+
+        <!-- Nuitka -->
+        <div class="glass-card rounded-2xl p-8 binary-option scroll-reveal" style="transition-delay: 0.1s">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+            </div>
+            <h3 class="text-xl font-bold">Nuitka</h3>
+          </div>
+          <div class="text-sm text-muted-foreground mb-4">Compiles to native C — 2-4x faster</div>
+          <div class="code-block rounded-lg p-3 font-mono text-xs mb-4">
+            <span class="text-green-400">$</span> pip install nuitka<br/>
+            <span class="text-green-400">$</span> nuitka --standalone --onefile main.py
+          </div>
+          <ul class="space-y-2 text-sm text-muted-foreground">
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Native compilation</li>
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>2-4x performance boost</li>
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Smaller output size</li>
+          </ul>
+        </div>
+
+        <!-- PyOxidizer -->
+        <div class="glass-card rounded-2xl p-8 binary-option scroll-reveal" style="transition-delay: 0.2s">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+            <h3 class="text-xl font-bold">PyOxidizer</h3>
+          </div>
+          <div class="text-sm text-muted-foreground mb-4">Embeds Python in Rust — zero overhead</div>
+          <div class="code-block rounded-lg p-3 font-mono text-xs mb-4">
+            <span class="text-green-400">$</span> pip install pyoxidizer<br/>
+            <span class="text-green-400">$</span> pyoxidizer init<br/>
+            <span class="text-green-400">$</span> pyoxidizer build release
+          </div>
+          <ul class="space-y-2 text-sm text-muted-foreground">
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Embeds CPython in binary</li>
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>True single binary</li>
+            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Resource bundling built-in</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Recommended PyInstaller spec for this project -->
+      <div class="glass-card rounded-2xl p-8 scroll-reveal">
+        <h3 class="text-2xl font-bold mb-4">🚀 Recommended: PyInstaller with Hidden Imports</h3>
+        <p class="text-muted-foreground mb-6">For this project, use PyInstaller with explicit hidden imports to capture all dynamic dependencies:</p>
+        <div class="code-block rounded-xl p-6 font-mono text-sm overflow-x-auto">
+          <div class="text-muted-foreground mb-3"># Create a .spec file for complete dependency coverage</div>
+          <div class="text-indigo-400">a = Analysis(
+    ['main.py'],
+    pathex=[],
+    binaries=[],
+    datas=[],
+    hiddenimports=[
+        'agent.executor',
+        'agent.runner',
+        'agent.state',
+        'agent.watch.queue',
+        'agent.watch.service',
+        'agent.watch.state',
+        'agent.watch.utils',
+        'core.bootstrap',
+        'core.cache',
+        'core.config',
+        'core.permissions_checks',
+        'core.permissions_prompts',
+        'core.prefs',
+        'core.repl_utils',
+        'llm.client',
+        'llm.errors',
+        'llm.stream',
+        'llm.vision',
+        'repl.loop',
+        'repl.slash',
+        'repl.commands.config',
+        'repl.commands.info',
+        'repl.commands.inject',
+        'repl.commands.session',
+        'repl.commands.watch',
+        'tools.registry',
+        'tools.fs.edit',
+        'tools.fs.external',
+        'tools.fs.image',
+        'tools.fs.read',
+        'tools.fs.search',
+        'tools.fs.write',
+        'tools.git.core',
+        'tools.git.diff',
+        'tools.git.github',
+        'tools.git.info',
+        'tools.git.ops',
+        'tools.git.remote_sync',
+        'tools.image_gen',
+        'tools.system',
+        'tools.web.fetch',
+        'tools.web.serper',
+        'ui.banner',
+        'ui.components',
+        'ui.console',
+        'ui.context_logs',
+        'ui.dimming',
+        'ui.help',
+        'ui.markdown',
+        'ui.palette',
+        'ui.repl_bindings',
+        'ui.slash_complete',
+        'ui.streaming',
+        'ui.tool_logs',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+)
+pyz = PYZ(a.pure)
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='llm-orchestrator',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)</div>
+          <div class="text-muted-foreground mt-4"># Build command:</div>
+          <div class="text-green-400">$ pyinstaller llm-orchestrator.spec --onefile</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start Section -->
+  <section id="docs" class="relative py-32 border-t border-border/30">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-20 scroll-reveal">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/50 bg-secondary/50 text-xs text-muted-foreground mb-4">
+          GET STARTED
+        </div>
+        <h2 class="text-4xl md:text-5xl font-bold mb-4">Up and running<br/><span class="gradient-text">in 30 seconds</span></h2>
+      </div>
+
+      <div class="max-w-3xl mx-auto space-y-6">
+        <div class="glass-card rounded-2xl p-8 scroll-reveal">
+          <div class="flex items-center gap-4 mb-4">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">1</div>
+            <h3 class="text-xl font-bold">Clone the repo</h3>
+          </div>
+          <div class="code-block rounded-lg p-4 font-mono text-sm">
+            <span class="text-green-400">$</span> git clone https://github.com/Wolfy024/Agentic_LLM_Workflow.git<br/>
+            <span class="text-green-400">$</span> cd LLM-Orchestrator
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-8 scroll-reveal" style="transition-delay: 0.1s">
+          <div class="flex items-center gap-4 mb-4">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">2</div>
+            <h3 class="text-xl font-bold">Install dependencies</h3>
+          </div>
+          <div class="code-block rounded-lg p-4 font-mono text-sm">
+            <span class="text-green-400">$</span> pip install -r requirements.txt<br/>
+            <span class="text-green-400">$</span> cp .env.example .env <span class="text-muted-foreground"># Add your API keys</span>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-8 scroll-reveal" style="transition-delay: 0.2s">
+          <div class="flex items-center gap-4 mb-4">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">3</div>
+            <h3 class="text-xl font-bold">Launch the agent</h3>
+          </div>
+          <div class="code-block rounded-lg p-4 font-mono text-sm">
+            <span class="text-green-400">$</span> python main.py --model anthropic/claude-3.5-sonnet<br/>
+            <span class="text-muted-foreground"># Start chatting with your AI coding agent!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="relative py-32 border-t border-border/30">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <div class="scroll-reveal">
+        <h2 class="text-4xl md:text-6xl font-bold mb-6">Ready to build<br/><span class="gradient-text">with AI?</span></h2>
+        <p class="text-muted-foreground text-lg mb-10 max-w-2xl mx-auto">Join the open-source community. Fork, contribute, and ship faster with your AI coding agent.</p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a href="https://github.com/Wolfy024/Agentic_LLM_Workflow" target="_blank" class="btn-primary px-8 py-4 rounded-xl text-base font-semibold text-primary-foreground flex items-center gap-3">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            Star on GitHub
+          </a>
+          <a href="https://github.com/Wolfy024/Agentic_LLM_Workflow/archive/refs/heads/master.zip" target="_blank" class="btn-secondary px-8 py-4 rounded-xl text-base font-semibold flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download ZIP
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-border/30 py-12">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <span class="font-bold">LLM Orchestrator</span>
+          <span class="text-muted-foreground text-sm">© 2025</span>
+        </div>
+        <div class="flex items-center gap-6">
+          <a href="https://github.com/Wolfy024/Agentic_LLM_Workflow" target="_blank" class="text-muted-foreground hover:text-foreground transition-colors">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          </a>
+          <a href="https://github.com/Wolfy024/Agentic_LLM_Workflow/blob/master/LICENSE" target="_blank" class="text-muted-foreground hover:text-foreground transition-colors text-sm">MIT License</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scroll reveal script -->
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -9,7 +9,7 @@ from __future__ import annotations
 from rich.padding import Padding
 from rich.markdown import Markdown
 from ui.console import console
-from ui.markdown import dedupe_stream_text, merge_stream_chunk, render_markdown
+from ui.markdown import dedupe_stream_text, merge_stream_chunk, preprocess_latex, render_markdown
 
 
 class StreamingMarkdown:
@@ -31,7 +31,7 @@ class StreamingMarkdown:
         try:
             from rich.live import Live
             self._live = Live(
-                Padding(Markdown("…", code_theme="monokai"), (0, 0, 0, 4)),
+                Padding(Markdown(preprocess_latex("…"), code_theme="monokai"), (0, 0, 0, 4)),
                 console=console, refresh_per_second=12, transient=True
             )
             self._live.start()
@@ -50,7 +50,7 @@ class StreamingMarkdown:
             if now - self._last_refresh >= self._REFRESH_INTERVAL:
                 self._last_refresh = now
                 try:
-                    self._live.update(Padding(Markdown(self._buffer, code_theme="monokai"), (0, 0, 0, 4)))
+                    self._live.update(Padding(Markdown(preprocess_latex(self._buffer), code_theme="monokai"), (0, 0, 0, 4)))
                 except Exception: pass
 
     def abort(self) -> str:
