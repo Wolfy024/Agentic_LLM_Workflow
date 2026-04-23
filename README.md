@@ -70,12 +70,12 @@ Advanced settings are controlled via `config.json`:
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `model` | `unsloth/Kimi_K_2.6_36B_A3B_q4k_M` | Model identifier |
+| `model` | *(set in config.json)* | Model identifier passed to the API |
 | `profile` | `strict` | Permission profile (`strict` \| `dev` \| `ci`) |
 | `context_window` | `262144` | Context window size in tokens |
 | `max_tokens` | `131072` | Max tokens per response |
 | `temperature` | `0.15` | Sampling temperature |
-| `parallel_tool_calls` | `true` | Enable parallel tool execution |
+| `parallel_tool_calls` | `true` (boolean) | Enable parallel tool execution |
 | `max_tool_calls` | `2000` | Max tool calls per session |
 | `request_timeout` | `300` | HTTP request timeout (seconds) |
 
