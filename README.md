@@ -20,7 +20,7 @@ A local, self-hostable coding agent with a rich tool suite, interactive REPL, an
 - **Watch mode**: Auto-reload and re-run on file changes (`auto` or `batch`)
 - **Permission profiles**: `strict`, `dev`, `ci` — control what the agent is allowed to do without confirmation
 - **Recipes**: Reusable prompt templates loaded from `.minillm/recipes/`
-- **Web UI**: A companion landing page / documentation site in `frontend/`
+- **Web UI**: A companion landing page / documentation site in `docs/`
 
 ---
 
@@ -151,7 +151,7 @@ python main.py [workspace_path]
 │   ├── ui/                  # Terminal UI, markdown rendering, banners
 │   ├── sessions/            # Saved conversation sessions
 │   └── scan.py              # AST scanner (parse + import rules)
-├── frontend/                # Web UI (landing page / docs site)
+├── docs/                    # Web UI (landing page / docs site)
 ├── dist/                    # Pre-built binaries and installer
 ├── tests/                   # Test suite
 ├── installer.py             # Windows GUI installer
