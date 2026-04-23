@@ -57,6 +57,7 @@
       transition: all 0.3s ease;
       position: relative;
       overflow: hidden;
+      z-index: 0;
     }
     .btn-primary::before {
       content: '';
@@ -65,6 +66,7 @@
       background: linear-gradient(135deg, #818cf8, #a78bfa);
       opacity: 0;
       transition: opacity 0.3s ease;
+      z-index: -1;
     }
     .btn-primary:hover::before { opacity: 1; }
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3); }
