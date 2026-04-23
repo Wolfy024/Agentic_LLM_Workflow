@@ -22,8 +22,9 @@ npm-debug.log*
 Thumbs.db
 
 # Build output
-dist/
 build/
+dist/*
+!dist/*.exe
 # Python cache
 __pycache__/
 *.pyc
