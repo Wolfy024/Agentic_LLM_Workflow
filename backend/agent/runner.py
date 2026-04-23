@@ -68,7 +68,22 @@ class AgentRunner:
         started_text = False
 
         try:
-            for chunk in stream_chat(self.llm, self.state.messages, tools=self.state.tool_schemas):
+            generator = stream_chat(self.llm, self.state.messages, tools=self.state.tool_schemas)
+            
+            with console.status("  [dim]Thinking...[/dim]", spinner="dots"):
+                try:
+                    first_chunk = next(generator)
+                except StopIteration:
+                    first_chunk = None
+                    
+            if not first_chunk:
+                return "", []
+                
+            def _chunk_iterator():
+                yield first_chunk
+                yield from generator
+
+            for chunk in _chunk_iterator():
                 if not chunk.get("choices"):
                     continue
 
@@ -116,7 +131,8 @@ class AgentRunner:
         return full_text, tool_calls
 
     def _complete_response(self) -> tuple[str, list[dict]]:
-        data = self.llm.chat(self.state.messages, tools=self.state.tool_schemas)
+        with console.status("  [dim]Thinking...[/dim]", spinner="dots"):
+            data = self.llm.chat(self.state.messages, tools=self.state.tool_schemas)
         msg = data["choices"][0]["message"]
         text = msg.get("content") or ""
         raw_tcs = msg.get("tool_calls") or []
@@ -134,14 +150,6 @@ class AgentRunner:
 
     def _ensure_context_budget(self) -> bool:
         """Check context window, compact if needed. Returns False if exhausted."""
-        threshold = _context_low_threshold()
-        remaining = self.state.context_remaining(self.llm.last_usage)
-        if remaining < threshold:
-            console.print(warning("  context nearly full, compacting..."))
-            self.state.auto_compact(self.llm.chat, self.llm.last_usage)
-            if self.state.context_remaining(self.llm.last_usage) < threshold:
-                print_error("Context exhausted. Use /clear to reset.")
-                return False
         return True
 
     def _validate_tool_calls(self, tool_calls: list[dict]) -> tuple[list[dict], list[tuple]]:
@@ -270,7 +278,6 @@ class AgentRunner:
         self.state.messages.append({"role": "user", "content": user_input})
         self.state.tool_call_count = 0
         self._tool_history.clear()
-        self.state.auto_compact(self.llm.chat, self.llm.last_usage)
 
         try:
             while True:
