@@ -1,11 +1,28 @@
 # -*- mode: python ; coding: utf-8 -*-
+"""
+PyInstaller spec for the LLM Orchestrator Windows installer.
 
+Build with:
+    pyinstaller orchestrator-setup.spec
+
+The bundled output includes:
+    - orchestrator-setup.exe  (the installer GUI)
+    - orchestrator.exe        (the actual app, copied from backend/dist/)
+"""
+
+import sys
+from pathlib import Path
+
+spec_dir = Path(sys.argv[0]).resolve().parent
+backend_dist = spec_dir / "backend" / "dist"
 
 a = Analysis(
     ['installer.py'],
     pathex=[],
     binaries=[],
-    datas=[('backend/dist/llm-orchestrator.exe', '.')],
+    datas=[
+        (str(backend_dist / "llm-orchestrator.exe"), "."),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
