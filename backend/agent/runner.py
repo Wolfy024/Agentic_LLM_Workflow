@@ -69,45 +69,41 @@ class AgentRunner:
 
         try:
             generator = stream_chat(self.llm, self.state.messages, tools=self.state.tool_schemas)
+            status = console.status("  [dim]Thinking...[/dim]", spinner="dots")
+            status.start()
             
-            with console.status("  [dim]Thinking...[/dim]", spinner="dots"):
-                try:
-                    first_chunk = next(generator)
-                except StopIteration:
-                    first_chunk = None
-                    
-            if not first_chunk:
-                return "", []
-                
-            def _chunk_iterator():
-                yield first_chunk
-                yield from generator
+            try:
+                for chunk in generator:
+                    if not chunk.get("choices"):
+                        continue
 
-            for chunk in _chunk_iterator():
-                if not chunk.get("choices"):
-                    continue
+                    choice0 = chunk["choices"][0]
+                    delta = choice0.get("delta") or {}
+                    content_piece = self._normalize_stream_content(delta.get("content"))
+                    if not content_piece:
+                        content_piece = self._normalize_stream_content((choice0.get("message") or {}).get("content"))
+                    if content_piece:
+                        if not started_text:
+                            status.stop()
+                            stream_md.start()
+                            started_text = True
+                        stream_md.feed(content_piece)
 
-                choice0 = chunk["choices"][0]
-                delta = choice0.get("delta") or {}
-                content_piece = self._normalize_stream_content(delta.get("content"))
-                if not content_piece:
-                    content_piece = self._normalize_stream_content((choice0.get("message") or {}).get("content"))
-                if content_piece:
-                    if not started_text:
-                        stream_md.start()
-                        started_text = True
-                    stream_md.feed(content_piece)
+                    tc_deltas = delta.get("tool_calls", [])
+                    if tc_deltas and not started_text:
+                        status.stop()
 
-                tc_deltas = delta.get("tool_calls", [])
-                for tc_delta in tc_deltas:
-                    idx = tc_delta.get("index", 0)
-                    if idx not in tool_calls_by_index:
-                        tool_calls_by_index[idx] = {"id": tc_delta.get("id", f"call_{idx}"), "type": "function", "function": {"name": "", "arguments": ""}}
-                    tc = tool_calls_by_index[idx]
-                    if tc_delta.get("id"): tc["id"] = tc_delta["id"]
-                    fn_delta = tc_delta.get("function", {})
-                    if fn_delta.get("name"): tc["function"]["name"] += fn_delta["name"]
-                    if fn_delta.get("arguments"): tc["function"]["arguments"] += fn_delta["arguments"]
+                    for tc_delta in tc_deltas:
+                        idx = tc_delta.get("index", 0)
+                        if idx not in tool_calls_by_index:
+                            tool_calls_by_index[idx] = {"id": tc_delta.get("id", f"call_{idx}"), "type": "function", "function": {"name": "", "arguments": ""}}
+                        tc = tool_calls_by_index[idx]
+                        if tc_delta.get("id"): tc["id"] = tc_delta["id"]
+                        fn_delta = tc_delta.get("function", {})
+                        if fn_delta.get("name"): tc["function"]["name"] += fn_delta["name"]
+                        if fn_delta.get("arguments"): tc["function"]["arguments"] += fn_delta["arguments"]
+            finally:
+                status.stop()
 
         except KeyboardInterrupt:
             if started_text:
