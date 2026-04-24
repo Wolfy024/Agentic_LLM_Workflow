@@ -30,3 +30,6 @@ __pycache__/
 *.pyc
 *.pyo
 .Python
+
+# Session data
+sessions/
