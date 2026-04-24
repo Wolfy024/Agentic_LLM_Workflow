@@ -246,6 +246,9 @@ class AgentRunner:
         """Intercept view_image tool results and inject multimodal user messages."""
         processed = []
         for result in tool_results:
+            if not isinstance(result, dict):
+                processed.append(result)
+                continue
             content = result.get("content", "")
             try:
                 data = json.loads(content) if isinstance(content, str) else {}
