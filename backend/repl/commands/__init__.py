@@ -12,7 +12,7 @@ from repl.commands.config import (
     cmd_model, cmd_profile, cmd_workspace, cmd_yolo, cmd_safe,
     cmd_verbose, cmd_confirm, cmd_multi,
 )
-from repl.commands.info import cmd_help, cmd_tools, cmd_context
+from repl.commands.info import cmd_help, cmd_tools, cmd_context, cmd_memory
 from repl.commands.inject import cmd_task, cmd_plan, cmd_recipe, cmd_image
 from repl.commands.watch import cmd_watch
 
@@ -20,6 +20,7 @@ COMMAND_DISPATCH: dict[str, callable] = {
     "/help": cmd_help,
     "/tools": cmd_tools,
     "/context": cmd_context,
+    "/memory": cmd_memory,
     "/clear": cmd_clear,
     "/compact": cmd_compact,
     "/workspace": cmd_workspace,

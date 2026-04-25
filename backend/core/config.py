@@ -85,12 +85,12 @@ def load_config() -> dict:
         print_error(f"Invalid JSON in config.json: {e}")
         sys.exit(1)
 
-    for key in ("api_base", "sd_api_base", "api_key", "serper_api_key"):
+    for key in ("api_base", "sd_api_base", "api_key", "serper_api_key", "model"):
         if key in config:
             raw = config[key]
             config[key] = resolve_env(raw)
             if isinstance(raw, str) and raw.startswith("env:") and not config[key]:
-                console.print(warning(f"  env var {raw[4:]} not set -- set it or put the key directly in config.json"))
+                console.print(warning(f"  env var {raw[4:]} not set -- set it in your .env file"))
 
     config.setdefault("profile", "strict")
     if config["profile"] not in ("strict", "dev", "ci"):

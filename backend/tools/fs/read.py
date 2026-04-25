@@ -33,6 +33,13 @@ def read_file(path: str, offset: int | None = None, limit: int | None = None) ->
         lines = f.readlines()
     total_lines = len(lines)
 
+    # --- Track in retrieval memory ---
+    try:
+        from tools.fs.search import track_file
+        track_file(path, resolved, "".join(lines), total_lines)
+    except Exception:
+        pass
+
     # Smart mode: for large files without offset/limit, return outline instead of dumping everything
     if offset is None and limit is None and total_lines > 250:
         outline = _build_file_outline(lines, path)

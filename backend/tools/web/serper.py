@@ -19,7 +19,7 @@ def set_serper_key(key: str) -> None:
 def _serper_request(endpoint: str, payload: dict) -> dict:
     import httpx
     if not SERPER_API_KEY:
-        return {"error": "Serper API key not configured. Set 'serper_api_key' in config.json."}
+        return {"error": "Serper API key not configured. Set SERPER_API_KEY in your .env file."}
     resp = httpx.post(
         f"https://google.serper.dev/{endpoint}",
         headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},

@@ -73,7 +73,13 @@ def execute_tool(name: str, args: dict) -> str:
     try:
         result = fn(**args)
         if isinstance(result, str):
-            return result
-        return json.dumps(result, indent=2, default=str)
+            output = result
+        else:
+            output = json.dumps(result, indent=2, default=str)
+        # Global safety cap: prevent any single tool result from overwhelming the LLM
+        _MAX_TOOL_OUTPUT = 40_000
+        if len(output) > _MAX_TOOL_OUTPUT:
+            output = output[:_MAX_TOOL_OUTPUT] + f"\n... [output truncated at {_MAX_TOOL_OUTPUT:,} chars]"
+        return output
     except Exception as e:
         return json.dumps({"error": f"{type(e).__name__}: {e}"})

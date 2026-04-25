@@ -1,10 +1,10 @@
-"""Info display commands: /help, /tools, /context."""
+"""Info display commands: /help, /tools, /context, /memory."""
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ui.help import print_help, print_tools
-from ui.context_logs import print_context
+from ui.context_logs import print_context, print_memory_stats
 
 if TYPE_CHECKING:
     from repl.slash import CommandContext
@@ -21,15 +21,28 @@ def cmd_tools(ctx: CommandContext) -> None:
 
 
 def cmd_context(ctx: CommandContext) -> None:
-    """Display context window usage stats."""
+    """Display token usage stats."""
     u = ctx.runner.llm.last_usage
     info = {
         "messages": len(ctx.runner.state.messages),
         "tokens_used": ctx.runner.state.context_used(u),
         "tokens_source": "api" if u else "estimate",
-        "context_window": ctx.runner.state.context_window,
-        "max_output": ctx.runner.state.max_output,
-        "remaining": ctx.runner.state.context_remaining(u),
-        "pct_used": f"{ctx.runner.state.context_used(u) / ctx.runner.state.context_window:.1%}",
     }
     print_context(info)
+
+
+def cmd_memory(ctx: CommandContext) -> None:
+    """Display retrieval memory/index stats."""
+    try:
+        from tools.fs.search import get_retrieval_memory_stats
+        info = get_retrieval_memory_stats()
+    except Exception:
+        info = {
+            "visited_files": 0,
+            "important_symbols": 0,
+            "summaries": 0,
+            "vector_docs": 0,
+            "memory_file": "unavailable",
+            "vector_index_file": "unavailable",
+        }
+    print_memory_stats(info)

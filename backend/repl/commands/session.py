@@ -26,12 +26,8 @@ def cmd_clear(ctx: CommandContext) -> None:
 
 
 def cmd_compact(ctx: CommandContext) -> None:
-    """Trim conversation context."""
-    if len(ctx.runner.state.messages) > 5:
-        ctx.runner.state.auto_compact(ctx.runner.llm.chat, ctx.runner.llm.last_usage)
-        console.print(success("  compacted context"))
-    else:
-        console.print(muted("  nothing to compact yet (need more than a few messages)"))
+    """Context compaction is intentionally disabled."""
+    console.print(muted("  context compaction is disabled (server handles context sizing)"))
 
 
 def cmd_save(ctx: CommandContext) -> None:

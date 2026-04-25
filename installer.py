@@ -1,29 +1,28 @@
-r"""
-LLM Orchestrator Windows Installer
+"""Windows GUI installer for LLM Orchestrator."""
 
-A tkinter-based GUI installer that:
-1. Copies the built orchestrator.exe to %LOCALAPPDATA%\LLM_Orchestrator\
-2. Creates a .env file with user-provided API credentials
-3. Optionally adds the install directory to the user PATH
+from __future__ import annotations
 
-Usage:
-    python installer.py          # Interactive GUI installer
-    python installer.py --silent # Silent mode (requires --env-file)
-"""
-
-import os
-import sys
-import shutil
 import argparse
-import tkinter as tk
-from tkinter import messagebox, ttk
-import winreg
 import ctypes
+import os
+import shutil
+import sys
+import tkinter as tk
+import winreg
+from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
 
-
-# ── Constants ────────────────────────────────────────────────────────────────
-
+APP_NAME = "LLM Orchestrator"
 INSTALL_DIR_NAME = "LLM_Orchestrator"
+PRIMARY_EXE_NAME = "llm-orchestrator.exe"
+ALIAS_EXE_NAME = "orchestrator.exe"
+CONFIG_FILE_NAME = "config.json"
+STARTUP_BANNER_NAME = "startup_banner.txt"
+
+DEFAULT_LLM_BASE = "https://chat.neuralnote.online/v1/"
+DEFAULT_SD_BASE = "https://chat.neuralnote.online/sd"
+DEFAULT_LLM_MODEL = "Qwen3.6-35B-Uncensored"
+
 ENV_TEMPLATE = """# LLM Orchestrator Configuration
 # Edit this file with your API credentials
 
@@ -31,508 +30,322 @@ LLM_API_KEY={llm_key}
 SERPER_API_KEY={serper_key}
 LLM_API_BASE={llm_base}
 SD_API_BASE={sd_base}
+LLM_MODEL={llm_model}
 """
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+def _base_dirs() -> list[Path]:
+    dirs: list[Path] = []
+    if getattr(sys, "frozen", False):
+        dirs.append(Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent)))
+        dirs.append(Path(sys.executable).parent)
+    else:
+        dirs.append(Path(__file__).resolve().parent)
+    return dirs
 
-def get_base_path():
-    """Get the directory where this script lives."""
-    if getattr(sys, 'frozen', False):
-        return sys._MEIPASS
-    return os.path.dirname(os.path.abspath(__file__))
+
+def _candidate_paths(rel_path: str) -> list[Path]:
+    out: list[Path] = []
+    for base in _base_dirs():
+        out.append(base / rel_path)
+    return out
 
 
-def find_orchestrator_exe():
-    """
-    Locate the built orchestrator.exe.
-
-    Search order:
-    1. If frozen (bundled): look in the same directory as the exe
-    2. If not frozen: look in backend/dist/ relative to this script
-    """
-    base = get_base_path()
-
-    # Frozen: exe is alongside this installer
-    if getattr(sys, 'frozen', False):
-        exe = os.path.join(base, "orchestrator.exe")
-        if os.path.exists(exe):
-            return exe
-
-    # Development: backend/dist/llm-orchestrator.exe
-    dev_exe = os.path.join(base, "backend", "dist", "llm-orchestrator.exe")
-    if os.path.exists(dev_exe):
-        return dev_exe
-
-    # Fallback: same dir as installer (for bundled case)
-    fallback = os.path.join(base, "llm-orchestrator.exe")
-    if os.path.exists(fallback):
-        return fallback
-
+def _find_existing(paths: list[Path]) -> Path | None:
+    for p in paths:
+        if p.exists():
+            return p
     return None
 
 
-def add_to_path(install_dir):
-    """
-    Add install_dir to the user PATH environment variable.
+def resolve_payload() -> dict[str, Path | None]:
+    exe = None
+    if getattr(sys, "frozen", False):
+        # We are the monolithic executable! Copy ourselves.
+        exe = Path(sys.executable)
+    else:
+        exe_candidates = [
+            PRIMARY_EXE_NAME,
+            ALIAS_EXE_NAME,
+            f"dist/{PRIMARY_EXE_NAME}",
+            f"backend/dist/{PRIMARY_EXE_NAME}",
+        ]
+        for rel in exe_candidates:
+            exe = _find_existing(_candidate_paths(rel))
+            if exe:
+                break
 
-    Returns True on success, False on failure.
-    Broadcasts WM_SETTINGCHANGE so new terminals pick up the change.
-    """
+    config = _find_existing(_candidate_paths(CONFIG_FILE_NAME))
+    banner = _find_existing(_candidate_paths(STARTUP_BANNER_NAME))
+    return {"exe": exe, "config": config, "banner": banner}
+
+
+def get_default_install_dir() -> Path:
+    local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+    return Path(local_app_data) / INSTALL_DIR_NAME
+
+
+def _normalize_win_path(path: str) -> str:
+    return os.path.normcase(os.path.normpath(path.strip()))
+
+
+def _broadcast_env_change() -> None:
+    HWND_BROADCAST = 0xFFFF
+    WM_SETTINGCHANGE = 0x001A
+    SMTO_ABORTIFHUNG = 0x0002
+    ctypes.windll.user32.SendMessageTimeoutW(
+        HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment", SMTO_ABORTIFHUNG, 5000, None
+    )
+
+
+def add_to_user_path(install_dir: Path) -> bool:
     try:
-        key = winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            "Environment",
-            0,
-            winreg.KEY_ALL_ACCESS,
-        )
-        try:
-            user_path, _ = winreg.QueryValueEx(key, "PATH")
-        except FileNotFoundError:
-            user_path = ""
-
-        if install_dir not in user_path:
-            separator = ";" if user_path and not user_path.endswith(";") else ""
-            new_path = user_path + separator + install_dir
-            winreg.SetValueEx(key, "PATH", 0, winreg.REG_EXPAND_SZ, new_path)
-
-            # Notify the system so new processes see the updated PATH
-            HWND_BROADCAST = 0xFFFF
-            WM_SETTINGCHANGE = 0x001A
-            SMTO_ABORTIFHUNG = 0x0002
-            ctypes.windll.user32.SendMessageTimeoutW(
-                HWND_BROADCAST,
-                WM_SETTINGCHANGE,
-                0,
-                "Environment",
-                SMTO_ABORTIFHUNG,
-                5000,
-                None,
-            )
-
-        key.Close()
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_ALL_ACCESS) as key:
+            try:
+                user_path, _ = winreg.QueryValueEx(key, "PATH")
+            except FileNotFoundError:
+                user_path = ""
+            entries = [e for e in user_path.split(";") if e.strip()]
+            normalized = {_normalize_win_path(e) for e in entries}
+            if _normalize_win_path(str(install_dir)) not in normalized:
+                entries.append(str(install_dir))
+                winreg.SetValueEx(key, "PATH", 0, winreg.REG_EXPAND_SZ, ";".join(entries))
+        _broadcast_env_change()
         return True
-    except Exception as e:
-        print(f"Failed to add to PATH automatically: {e}")
+    except Exception:
         return False
 
 
-def remove_from_path(install_dir):
-    """Remove install_dir from the user PATH environment variable."""
+def remove_from_user_path(install_dir: Path) -> bool:
     try:
-        key = winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            "Environment",
-            0,
-            winreg.KEY_ALL_ACCESS,
-        )
-        user_path, _ = winreg.QueryValueEx(key, "PATH")
-        key.Close()
-
-        entries = [e for e in user_path.split(";") if e != install_dir]
-        new_path = ";".join(entries)
-        if not new_path.startswith(";"):
-            new_path = new_path.lstrip(";")
-
-        key = winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            "Environment",
-            0,
-            winreg.KEY_ALL_ACCESS,
-        )
-        winreg.SetValueEx(key, "PATH", 0, winreg.REG_EXPAND_SZ, new_path)
-        key.Close()
-
-        HWND_BROADCAST = 0xFFFF
-        WM_SETTINGCHANGE = 0x001A
-        SMTO_ABORTIFHUNG = 0x0002
-        ctypes.windll.user32.SendMessageTimeoutW(
-            HWND_BROADCAST,
-            WM_SETTINGCHANGE,
-            0,
-            "Environment",
-            SMTO_ABORTIFHUNG,
-            5000,
-            None,
-        )
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_ALL_ACCESS) as key:
+            try:
+                user_path, _ = winreg.QueryValueEx(key, "PATH")
+            except FileNotFoundError:
+                user_path = ""
+            target = _normalize_win_path(str(install_dir))
+            entries = [e for e in user_path.split(";") if e.strip()]
+            kept = [e for e in entries if _normalize_win_path(e) != target]
+            winreg.SetValueEx(key, "PATH", 0, winreg.REG_EXPAND_SZ, ";".join(kept))
+        _broadcast_env_change()
         return True
-    except Exception as e:
-        print(f"Failed to remove from PATH: {e}")
+    except Exception:
         return False
 
 
-def is_installed():
-    """Check if the orchestrator is already installed."""
-    local_app_data = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
-    install_dir = os.path.join(local_app_data, INSTALL_DIR_NAME)
-    return os.path.exists(os.path.join(install_dir, "orchestrator.exe"))
+def _write_env_file(target: Path, llm_key: str, serper_key: str, llm_base: str, sd_base: str, llm_model: str) -> None:
+    target.write_text(
+        ENV_TEMPLATE.format(
+            llm_key=llm_key,
+            serper_key=serper_key,
+            llm_base=llm_base,
+            sd_base=sd_base,
+            llm_model=llm_model,
+        ),
+        encoding="utf-8",
+    )
 
 
-def get_install_dir():
-    """Get the standard installation directory."""
-    local_app_data = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
-    return os.path.join(local_app_data, INSTALL_DIR_NAME)
+def install_to_dir(
+    install_dir: Path,
+    llm_key: str,
+    serper_key: str,
+    llm_base: str,
+    sd_base: str,
+    llm_model: str,
+    add_path: bool,
+) -> tuple[Path, bool]:
+    payload = resolve_payload()
+    exe_src = payload["exe"]
+    if exe_src is None:
+        raise RuntimeError(
+            f"Could not find {PRIMARY_EXE_NAME}. Build it first (dist/{PRIMARY_EXE_NAME}) "
+            "or place it next to the installer."
+        )
+    if payload["config"] is None:
+        raise RuntimeError("Could not find config.json required by the orchestrator.")
+
+    install_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(exe_src, install_dir / PRIMARY_EXE_NAME)
+    shutil.copy2(exe_src, install_dir / ALIAS_EXE_NAME)
+    shutil.copy2(payload["config"], install_dir / CONFIG_FILE_NAME)
+    if payload["banner"] is not None:
+        shutil.copy2(payload["banner"], install_dir / STARTUP_BANNER_NAME)
+
+    _write_env_file(install_dir / ".env", llm_key, serper_key, llm_base, sd_base, llm_model)
+    path_ok = add_to_user_path(install_dir) if add_path else True
+    return install_dir, path_ok
 
 
-# ── Silent Installer ────────────────────────────────────────────────────────
-
-def silent_install(llm_key, serper_key, llm_base, sd_base):
-    """Non-interactive installation. Used by --silent flag."""
-    exe_path = find_orchestrator_exe()
-    if not exe_path:
-        print("ERROR: Could not find orchestrator.exe. Build the app first.")
-        sys.exit(1)
-
-    install_dir = get_install_dir()
-    if not os.path.exists(install_dir):
-        os.makedirs(install_dir)
-
-    target_exe = os.path.join(install_dir, "orchestrator.exe")
-    try:
-        shutil.copy2(exe_path, target_exe)
-    except Exception as e:
-        print(f"ERROR: Failed to copy executable: {e}")
-        sys.exit(1)
-
-    env_path = os.path.join(install_dir, ".env")
-    try:
-        with open(env_path, "w", encoding="utf-8") as f:
-            f.write(ENV_TEMPLATE.format(
-                llm_key=llm_key,
-                serper_key=serper_key,
-                llm_base=llm_base,
-                sd_base=sd_base,
-            ))
-    except Exception as e:
-        print(f"ERROR: Failed to write .env: {e}")
-        sys.exit(1)
-
-    print(f"Installed to: {install_dir}")
-    print(f"Config written to: {env_path}")
-    sys.exit(0)
+def uninstall_from_dir(install_dir: Path) -> None:
+    remove_from_user_path(install_dir)
+    if install_dir.exists():
+        shutil.rmtree(install_dir)
 
 
-# ── GUI Installer ───────────────────────────────────────────────────────────
+def _read_env_file(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        values[k.strip()] = v.strip()
+    return values
+
 
 class InstallerWindow:
-    """Main installer GUI window."""
-
-    WINDOW_WIDTH = 520
-    WINDOW_HEIGHT = 420
-
-    DEFAULT_LLM_BASE = "https://chat.neuralnote.online/chat/v1"
-    DEFAULT_SD_BASE = "https://chat.neuralnote.online/sd"
-
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("LLM Orchestrator Installer")
-
-        screen_w = self.root.winfo_screenwidth()
-        screen_h = self.root.winfo_screenheight()
-        x = int((screen_w / 2) - (self.WINDOW_WIDTH / 2))
-        y = int((screen_h / 2) - (self.WINDOW_HEIGHT / 2))
-        self.root.geometry(
-            f"{self.WINDOW_WIDTH}x{self.WINDOW_HEIGHT}+{x}+{y}"
-        )
+        self.root.title(f"{APP_NAME} Setup")
+        self.root.geometry("640x500")
         self.root.resizable(False, False)
-
-        # Center the window after it's been mapped
-        self.root.after(10, self._center_window)
-
         self._build_ui()
 
-    def _center_window(self):
-        """Re-center the window after initial mapping (handles DPI)."""
-        screen_w = self.root.winfo_screenwidth()
-        screen_h = self.root.winfo_screenheight()
-        x = int((screen_w / 2) - (self.WINDOW_WIDTH / 2))
-        y = int((screen_h / 2) - (self.WINDOW_HEIGHT / 2))
-        self.root.geometry(f"+{x}+{y}")
+    def _build_ui(self) -> None:
+        main = ttk.Frame(self.root, padding=18)
+        main.pack(fill=tk.BOTH, expand=True)
 
-    def _build_ui(self):
-        """Construct the installer UI."""
-        # Title
-        lbl_title = tk.Label(
-            self.root,
-            text="LLM Orchestrator Setup",
-            font=("Segoe UI", 16, "bold"),
-        )
-        lbl_title.pack(pady=(18, 6))
+        ttk.Label(main, text=f"{APP_NAME} Setup", font=("Segoe UI", 16, "bold")).pack(anchor="w")
+        ttk.Label(main, text="Install and configure your local agent runtime.").pack(anchor="w", pady=(0, 14))
 
-        # Subtitle
-        lbl_subtitle = tk.Label(
-            self.root,
-            text="Enter your API credentials to get started",
-            font=("Segoe UI", 9),
-            fg="gray",
-        )
-        lbl_subtitle.pack(pady=(0, 10))
+        grid = ttk.Frame(main)
+        grid.pack(fill=tk.X)
+        grid.columnconfigure(1, weight=1)
 
-        # Main frame
-        frame = tk.Frame(self.root, padx=24, pady=8)
-        frame.pack(fill=tk.BOTH, expand=True)
+        self.vars = {
+            "install_dir": tk.StringVar(value=str(get_default_install_dir())),
+            "llm_key": tk.StringVar(),
+            "serper_key": tk.StringVar(),
+            "llm_base": tk.StringVar(value=DEFAULT_LLM_BASE),
+            "sd_base": tk.StringVar(value=DEFAULT_SD_BASE),
+            "llm_model": tk.StringVar(value=DEFAULT_LLM_MODEL),
+            "add_path": tk.BooleanVar(value=True),
+        }
 
-        # ── Input fields ────────────────────────────────────────────────
-        row = 0
-        self.entries = {}
+        self._row(grid, 0, "Install Directory", "install_dir", browse=True)
+        self._row(grid, 1, "LLM API Key", "llm_key", secret=True)
+        self._row(grid, 2, "Serper API Key", "serper_key", secret=True)
+        self._row(grid, 3, "LLM API Base", "llm_base")
+        self._row(grid, 4, "SD API Base", "sd_base")
+        self._row(grid, 5, "LLM Model", "llm_model")
 
-        fields = [
-            ("LLM API Key:", "llm_key", True),
-            ("Serper API Key:", "serper_key", True),
-            ("LLM API Base:", "llm_base", False, self.DEFAULT_LLM_BASE),
-            ("SD API Base:", "sd_base", False, self.DEFAULT_SD_BASE),
-        ]
+        ttk.Checkbutton(
+            main,
+            variable=self.vars["add_path"],
+            text="Add install directory to user PATH (recommended)",
+        ).pack(anchor="w", pady=(10, 6))
 
-        for label_text, var_name, is_password, *default in fields:
-            tk.Label(
-                frame, text=label_text, font=("Segoe UI", 9)
-            ).grid(row=row, column=0, sticky="w", pady=4, padx=(0, 8))
+        self.status = ttk.Label(main, text="")
+        self.status.pack(anchor="w", pady=(6, 8))
 
-            ent = tk.Entry(
-                frame,
-                width=48,
-                font=("Segoe UI", 9),
-                show="*" if is_password else "",
-            )
-            ent.grid(row=row, column=1, pady=4, padx=(0, 8))
-            if default:
-                ent.insert(0, default[0])
+        buttons = ttk.Frame(main)
+        buttons.pack(fill=tk.X, pady=(8, 0))
+        ttk.Button(buttons, text="Install", command=self._on_install).pack(side=tk.LEFT)
+        ttk.Button(buttons, text="Uninstall", command=self._on_uninstall).pack(side=tk.LEFT, padx=8)
+        ttk.Button(buttons, text="Close", command=self.root.destroy).pack(side=tk.RIGHT)
 
-            self.entries[var_name] = ent
-            row += 1
+    def _row(self, parent: ttk.Frame, idx: int, label: str, key: str, secret: bool = False, browse: bool = False) -> None:
+        ttk.Label(parent, text=label).grid(row=idx, column=0, sticky="w", padx=(0, 8), pady=5)
+        entry = ttk.Entry(parent, textvariable=self.vars[key], show="*" if secret else "")
+        entry.grid(row=idx, column=1, sticky="ew", pady=5)
+        if browse:
+            ttk.Button(parent, text="Browse...", command=self._browse_install_dir).grid(row=idx, column=2, padx=(8, 0))
 
-        # ── Options ───────────────────────────────────────────────────────
-        self.var_path = tk.BooleanVar(value=True)
-        self.var_uninstall = tk.BooleanVar(value=False)
+    def _browse_install_dir(self) -> None:
+        chosen = filedialog.askdirectory(title="Choose installation directory")
+        if chosen:
+            self.vars["install_dir"].set(chosen)
 
-        chk_path = tk.Checkbutton(
-            frame,
-            text="Add to User PATH (run 'orchestrator' from any terminal)",
-            variable=self.var_path,
-            font=("Segoe UI", 9),
-        )
-        chk_path.grid(row=row, column=0, columnspan=2, sticky="w", pady=(12, 2), padx=(0, 8))
-        row += 1
-
-        chk_uninstall = tk.Checkbutton(
-            frame,
-            text="Uninstall previous installation",
-            variable=self.var_uninstall,
-            font=("Segoe UI", 9),
-            fg="red",
-        )
-        chk_uninstall.grid(row=row, column=0, columnspan=2, sticky="w", pady=(2, 2), padx=(0, 8))
-        row += 1
-
-        # ── Status label ──────────────────────────────────────────────────
-        self.lbl_status = tk.Label(
-            frame, text="", font=("Segoe UI", 9), fg="gray"
-        )
-        self.lbl_status.grid(row=row, column=0, columnspan=2, pady=(4, 0))
-
-        # ── Buttons ───────────────────────────────────────────────────────
-        btn_frame = tk.Frame(frame)
-        btn_frame.grid(row=row + 1, column=0, columnspan=2, pady=(14, 0))
-
-        btn_install = tk.Button(
-            btn_frame,
-            text="Install",
-            command=self._on_install,
-            width=14,
-            bg="#4CAF50",
-            fg="white",
-            font=("Segoe UI", 10, "bold"),
-            relief="raised",
-            bd=2,
-        )
-        btn_install.pack(side=tk.LEFT, padx=(0, 8))
-
-        btn_uninstall = tk.Button(
-            btn_frame,
-            text="Uninstall",
-            command=self._on_uninstall,
-            width=14,
-            bg="#f44336",
-            fg="white",
-            font=("Segoe UI", 10, "bold"),
-            relief="raised",
-            bd=2,
-        )
-        btn_uninstall.pack(side=tk.LEFT)
-
-    def _on_install(self):
-        """Handle the Install button click."""
-        llm_key = self.entries["llm_key"].get().strip()
-        serper_key = self.entries["serper_key"].get().strip()
-        llm_base = self.entries["llm_base"].get().strip()
-        sd_base = self.entries["sd_base"].get().strip()
-
+    def _on_install(self) -> None:
+        llm_key = self.vars["llm_key"].get().strip()
+        llm_model = self.vars["llm_model"].get().strip()
+        install_dir_raw = self.vars["install_dir"].get().strip()
+        if not install_dir_raw:
+            messagebox.showwarning("Validation", "Install directory is required.")
+            return
         if not llm_key:
-            messagebox.showwarning("Warning", "LLM API Key is required.")
+            messagebox.showwarning("Validation", "LLM API Key is required.")
+            return
+        if not llm_model:
+            messagebox.showwarning("Validation", "LLM Model is required.")
             return
 
-        self.lbl_status.config(text="Installing…", fg="blue")
-        self.root.update()
+        self.status.config(text="Installing...")
+        self.root.update_idletasks()
 
         try:
-            self._do_install(llm_key, serper_key, llm_base, sd_base)
-        except Exception as e:
-            messagebox.showerror("Error", f"Installation failed:\n{e}")
-            self.lbl_status.config(text="Failed", fg="red")
-
-    def _do_install(self, llm_key, serper_key, llm_base, sd_base):
-        """Perform the actual installation steps."""
-        exe_path = find_orchestrator_exe()
-        if not exe_path:
-            raise RuntimeError(
-                "Could not find orchestrator.exe.\n\n"
-                "Please build the main application first:\n"
-                "  cd backend\n"
-                "  pyinstaller llm-orchestrator.spec"
-            )
-
-        install_dir = get_install_dir()
-        if not os.path.exists(install_dir):
-            os.makedirs(install_dir)
-
-        # Copy executable
-        target_exe = os.path.join(install_dir, "orchestrator.exe")
-        shutil.copy2(exe_path, target_exe)
-
-        # Write .env
-        env_path = os.path.join(install_dir, ".env")
-        with open(env_path, "w", encoding="utf-8") as f:
-            f.write(ENV_TEMPLATE.format(
+            install_dir, path_ok = install_to_dir(
+                install_dir=Path(install_dir_raw),
                 llm_key=llm_key,
-                serper_key=serper_key,
-                llm_base=llm_base,
-                sd_base=sd_base,
-            ))
+                serper_key=self.vars["serper_key"].get().strip(),
+                llm_base=self.vars["llm_base"].get().strip(),
+                sd_base=self.vars["sd_base"].get().strip(),
+                llm_model=llm_model,
+                add_path=self.vars["add_path"].get(),
+            )
+        except Exception as e:
+            self.status.config(text="Install failed.")
+            messagebox.showerror("Install failed", str(e))
+            return
 
-        # PATH
-        path_msg = ""
-        if self.var_path.get():
-            if add_to_path(install_dir):
-                path_msg = f"\n\nAdded to PATH: {install_dir}"
-            else:
-                path_msg = (
-                    f"\n\n⚠ Failed to add to PATH automatically.\n"
-                    f"Please add {install_dir} to your PATH manually."
-                )
-
-        self.lbl_status.config(text="Done!", fg="green")
+        extra = "" if path_ok else "\n\nWarning: failed to modify PATH automatically."
+        self.status.config(text="Install completed.")
         messagebox.showinfo(
-            "Installation Complete",
-            f"LLM Orchestrator installed successfully!\n\n"
-            f"Installed to: {install_dir}{path_msg}\n\n"
-            f"Open a NEW terminal and run:\n"
-            f"  orchestrator [workspace_path]",
+            "Success",
+            f"{APP_NAME} installed successfully.\n\nInstall dir:\n{install_dir}"
+            f"{extra}\n\nOpen a new terminal and run:\norchestrator [workspace_path]",
         )
 
-    def _on_uninstall(self):
-        """Handle the Uninstall button click."""
+    def _on_uninstall(self) -> None:
+        install_dir = Path(self.vars["install_dir"].get().strip() or str(get_default_install_dir()))
         if not messagebox.askyesno(
-            "Confirm Uninstall",
-            "Remove LLM Orchestrator installation?\n\n"
-            "This will delete the installed files and remove the PATH entry.",
+            "Confirm uninstall",
+            f"Remove {APP_NAME} from:\n{install_dir}\n\nThis also removes it from user PATH.",
         ):
             return
-
-        install_dir = get_install_dir()
         try:
-            # Remove from PATH
-            if self.var_path.get():
-                remove_from_path(install_dir)
-
-            # Delete install directory
-            if os.path.exists(install_dir):
-                shutil.rmtree(install_dir)
-
-            messagebox.showinfo(
-                "Uninstall Complete",
-                f"LLM Orchestrator has been removed.\n\n"
-                f"Deleted: {install_dir}",
-            )
+            uninstall_from_dir(install_dir)
         except Exception as e:
-            messagebox.showerror("Error", f"Uninstall failed:\n{e}")
+            messagebox.showerror("Uninstall failed", str(e))
+            return
+        self.status.config(text="Uninstall completed.")
+        messagebox.showinfo("Uninstalled", f"Removed installation from:\n{install_dir}")
 
 
-# ── Entry Point ──────────────────────────────────────────────────────────────
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="LLM Orchestrator Installer",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""\
-Examples:
-  python installer.py                          # Interactive GUI
-  python installer.py --silent                 # Silent install (requires --env-file)
-  python installer.py --silent --env-file .env # Silent install with .env
-  python installer.py --uninstall              # Uninstall
-""",
-    )
-    parser.add_argument(
-        "--silent", action="store_true", help="Run in silent (non-interactive) mode"
-    )
-    parser.add_argument(
-        "--env-file",
-        type=str,
-        help="Path to a .env file to read credentials from (used with --silent)",
-    )
-    parser.add_argument(
-        "--uninstall", action="store_true", help="Uninstall LLM Orchestrator"
-    )
+def main() -> None:
+    parser = argparse.ArgumentParser(description=f"{APP_NAME} Installer")
+    parser.add_argument("--silent", action="store_true", help="Run non-interactive install.")
+    parser.add_argument("--env-file", type=str, help="Path to .env values for silent install.")
+    parser.add_argument("--install-dir", type=str, default=str(get_default_install_dir()))
+    parser.add_argument("--no-path", action="store_true", help="Do not add install directory to user PATH.")
+    parser.add_argument("--uninstall", action="store_true", help="Uninstall from --install-dir.")
     args = parser.parse_args()
 
-    # ── Uninstall mode ──────────────────────────────────────────────────
     if args.uninstall:
-        install_dir = get_install_dir()
-        if not os.path.exists(install_dir):
-            print(f"Not installed: {install_dir}")
-            sys.exit(0)
+        target = Path(args.install_dir)
+        uninstall_from_dir(target)
+        print(f"Uninstalled from: {target}")
+        return
 
-        if args.silent or messagebox.askyesno(
-            "Confirm Uninstall",
-            "Remove LLM Orchestrator installation?",
-        ):
-            remove_from_path(install_dir)
-            shutil.rmtree(install_dir)
-            print(f"Uninstalled: {install_dir}")
-            sys.exit(0)
-        else:
-            print("Uninstall cancelled.")
-            sys.exit(0)
-
-    # ── Silent install mode ─────────────────────────────────────────────
     if args.silent:
-        if args.env_file:
-            # Read from .env file
-            if not os.path.exists(args.env_file):
-                print(f"ERROR: .env file not found: {args.env_file}")
-                sys.exit(1)
-            creds = {}
-            with open(args.env_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    if "=" in line:
-                        key, _, value = line.partition("=")
-                        creds[key.strip()] = value.strip()
+        if not args.env_file:
+            raise SystemExit("ERROR: --silent requires --env-file")
+        env_values = _read_env_file(Path(args.env_file))
+        install_dir, path_ok = install_to_dir(
+            install_dir=Path(args.install_dir),
+            llm_key=env_values.get("LLM_API_KEY", ""),
+            serper_key=env_values.get("SERPER_API_KEY", ""),
+            llm_base=env_values.get("LLM_API_BASE", DEFAULT_LLM_BASE),
+            sd_base=env_values.get("SD_API_BASE", DEFAULT_SD_BASE),
+            llm_model=env_values.get("LLM_MODEL", DEFAULT_LLM_MODEL),
+            add_path=not args.no_path,
+        )
+        print(f"Installed to: {install_dir}")
+        print("PATH updated." if path_ok else "WARNING: failed to update PATH.")
+        return
 
-            silent_install(
-                llm_key=creds.get("LLM_API_KEY", ""),
-                serper_key=creds.get("SERPER_API_KEY", ""),
-                llm_base=creds.get("LLM_API_BASE", ""),
-                sd_base=creds.get("SD_API_BASE", ""),
-            )
-        else:
-            print("ERROR: --silent requires --env-file")
-            sys.exit(1)
-
-    # ── Interactive GUI mode ────────────────────────────────────────────
-    app = InstallerWindow()
-    app.root.mainloop()
+    InstallerWindow().root.mainloop()
 
 
 if __name__ == "__main__":

@@ -45,14 +45,11 @@ def _build_llm_client(config: dict) -> LLMClient:
     """Create and configure the LLM API client."""
     def _on_retry(attempt, mx, err, wait):
         console.print(warning(f"  retry {attempt}/{mx}: {err} (waiting {wait:.0f}s)"))
-
     return LLMClient(
         api_base=config["api_base"],
         api_key=config["api_key"],
         model=config.get("model", "auto"),
-        max_tokens=config.get("max_tokens", 131072),
         temperature=config.get("temperature", 0.15),
-        context_window=config.get("context_window", 262144),
         on_retry=_on_retry,
         parallel_tool_calls=bool(config.get("parallel_tool_calls", True)),
     )
@@ -119,7 +116,12 @@ def main():
         config["model"] = args.model
 
     # Set workspace
-    workspace = os.path.abspath(args.workspace) if args.workspace else prefs.get("workspace") or os.getcwd()
+    if args.workspace:
+        workspace = os.path.abspath(args.workspace)
+    elif prefs.get("workspace"):
+        workspace = prefs["workspace"]
+    else:
+        workspace = os.getcwd()
     set_workspace(workspace)
 
     if config.get("serper_api_key"):

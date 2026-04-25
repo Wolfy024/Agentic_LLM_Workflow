@@ -10,7 +10,7 @@ import json
 import time
 from typing import Iterator
 
-from llm.client import LLMClient, build_payload, MAX_RETRIES, RETRY_BACKOFF_BASE
+from llm.client import LLMClient, build_payload, _max_retries, _retry_backoff
 from llm.errors import classify_error
 
 
@@ -18,7 +18,6 @@ def stream_chat(client: LLMClient, messages: list[dict], tools: list[dict] | Non
     """Execute a stream request using the given client configuration."""
     payload = build_payload(
         model=client.model,
-        max_tok=client.max_tokens,
         temp=client.temperature,
         parallel=client.parallel,
         messages=messages,
@@ -26,7 +25,18 @@ def stream_chat(client: LLMClient, messages: list[dict], tools: list[dict] | Non
         stream=True
     )
     last_err = None
-    for attempt in range(MAX_RETRIES):
+    retries = _max_retries()
+    backoff = _retry_backoff()
+
+    # Pre-request cooldown if server is persistently failing
+    cooldown = client.health.cooldown_seconds
+    if cooldown > 0:
+        if client.on_retry:
+            hint = client.health.get_status_message() or "Server may be recovering..."
+            client.on_retry(0, retries, hint, cooldown)
+        time.sleep(cooldown)
+
+    for attempt in range(retries):
         try:
             with client.client.stream(
                 "POST", f"{client.api_base}/chat/completions",
@@ -34,6 +44,7 @@ def stream_chat(client: LLMClient, messages: list[dict], tools: list[dict] | Non
                 json=payload
             ) as resp:
                 resp.raise_for_status()
+                client.health.record_success()
                 for line in resp.iter_lines():
                     line = line.strip()
                     if not line or line == "data: [DONE]":
@@ -52,10 +63,11 @@ def stream_chat(client: LLMClient, messages: list[dict], tools: list[dict] | Non
         except Exception as e:
             err = classify_error(e)
             last_err = err
-            if err.retryable and attempt < MAX_RETRIES - 1:
-                wait = RETRY_BACKOFF_BASE ** attempt
+            client.health.record_failure(err)
+            if err.retryable and attempt < retries - 1:
+                wait = backoff ** attempt
                 if client.on_retry:
-                    client.on_retry(attempt + 1, MAX_RETRIES, str(err), wait)
+                    client.on_retry(attempt + 1, retries, str(err), wait)
                 time.sleep(wait)
                 continue
             raise err from e

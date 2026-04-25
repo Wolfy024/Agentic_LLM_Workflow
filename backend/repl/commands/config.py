@@ -92,7 +92,7 @@ def cmd_model(ctx: CommandContext) -> None:
     if not arg:
         models = _fetch_models(ctx)
         if not models:
-            console.print(muted('  no models from API; set "model" in config.json'))
+            console.print(muted('  no models from API; set "LLM_MODEL" in your .env file'))
             console.print(label_value("current", ctx.runner.llm.model))
             return
         print_models(models, ctx.runner.llm.model)

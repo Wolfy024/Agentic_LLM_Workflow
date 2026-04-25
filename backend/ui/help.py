@@ -14,7 +14,8 @@ from ui.components import section_header
 SLASH_COMMAND_SPECS: list[tuple[str, str]] = [
     ("/help", "Show this help"),
     ("/tools", "List all available tools"),
-    ("/context", "Context window usage"),
+    ("/context", "Token usage"),
+    ("/memory", "Show retrieval memory/index stats"),
     ("/workspace", "Show / change workspace"),
     ("/compact", "Trim conversation context"),
     ("/clear", "Reset conversation"),
@@ -65,7 +66,7 @@ def print_help() -> None:
         console.print(f"    {secondary(label, bold=False):36s} {muted(desc)}")
     console.print()
     console.print(f"  {muted('File create/edit in workspace is allowed; delete and other destructive ops need y.')}")
-    console.print(f"  {muted('Context auto-compacts with summary at 80%.')}")
+    console.print(f"  {muted('Context compaction is disabled; server handles context sizing.')}")
     console.print()
 
 

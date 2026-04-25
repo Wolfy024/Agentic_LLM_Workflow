@@ -5,4 +5,8 @@ gitpython>=3.1.42
 pathspec>=0.12.1
 pytest>=8.0.0
 watchdog>=4.0.0
-python-dotenv>=1.0.1pyinstaller>=6.0.0
+python-dotenv>=1.0.1
+pyinstaller>=6.0.0
+tree-sitter>=0.22.0
+tree-sitter-languages>=1.10.2
+sentence-transformers>=3.0.0

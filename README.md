@@ -28,7 +28,7 @@ A local, self-hostable coding agent with a rich tool suite, interactive REPL, an
 
 ### Windows — Pre-built Installer
 
-Download `orchestrator-setup.exe` from the [releases page](https://github.com/Wolfy024/Agentic_LLM_Workflow/releases) (or `dist/` folder), run it, and fill in your API credentials. The installer copies the binary to `%LOCALAPPDATA%\LLM_Orchestrator\` and optionally adds it to your `PATH`.
+Download `llm-orchestrator-setup.exe` from the [releases page](https://github.com/Wolfy024/Agentic_LLM_Workflow/releases) (or `dist/` folder), run it, and fill in your API credentials. The installer copies the binary to `%LOCALAPPDATA%\LLM_Orchestrator\` and optionally adds it to your `PATH`.
 
 After installation, open a **new** terminal and run:
 
@@ -64,13 +64,14 @@ LLM_API_KEY=your_api_key_here
 LLM_API_BASE=https://your-openai-compatible-endpoint/v1
 SERPER_API_KEY=your_serper_key_here   # optional — enables web search
 SD_API_BASE=https://your-sd-endpoint  # optional — enables image generation
+LLM_MODEL=your_model_name_here
 ```
 
 Advanced settings are controlled via `config.json`:
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `model` | *(set in config.json)* | Model identifier passed to the API |
+| `model` | *(set in .env)* | Model identifier passed to the API |
 | `profile` | `strict` | Permission profile (`strict` \| `dev` \| `ci`) |
 | `context_window` | `262144` | Context window size in tokens |
 | `max_tokens` | `131072` | Max tokens per response |

@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 import httpx
 
-from llm.errors import LLMError, classify_error
+from llm.errors import LLMError, classify_error, ServerHealthTracker
 import core.runtime_config as rc
 
 
@@ -32,8 +32,9 @@ MAX_RETRIES = 3
 RETRY_BACKOFF_BASE = 2.0
 
 
-def build_payload(model: str, max_tok: int, temp: float, parallel: bool, messages: list[dict], tools: list[dict] | None, stream: bool = False) -> dict:
-    pay = {"model": model, "messages": messages, "max_tokens": max_tok, "temperature": temp}
+def build_payload(model: str, temp: float, parallel: bool, messages: list[dict], tools: list[dict] | None, stream: bool = False) -> dict:
+    # Do not send max_tokens from client-side; let server enforce context/output limits.
+    pay = {"model": model, "messages": messages, "temperature": temp}
     if stream:
         pay["stream"] = True
     if tools:
@@ -46,17 +47,16 @@ def build_payload(model: str, max_tok: int, temp: float, parallel: bool, message
 
 class LLMClient:
     def __init__(self, api_base: str, api_key: str, model: str,
-                 max_tokens: int = 131072, temperature: float = 0.15,
-                 context_window: int = 262144, on_retry=None, parallel_tool_calls: bool = False):
+                 temperature: float = 0.15,
+                 on_retry=None, parallel_tool_calls: bool = False):
         self.api_base = api_base.rstrip("/")
         self.api_key = api_key
         self.model = model
-        self.max_tokens = max_tokens
         self.temperature = temperature
-        self.context_window = context_window
         self.on_retry = on_retry
         self.parallel = parallel_tool_calls
         self.last_usage: dict | None = None
+        self.health = ServerHealthTracker()
         # Use HTTP/2 if available (pip install h2) — better streaming performance
         req_t, con_t = _request_timeout(), _connect_timeout()
         try:
@@ -70,10 +70,19 @@ class LLMClient:
             )
 
     def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
-        payload = build_payload(self.model, self.max_tokens, self.temperature, self.parallel, messages, tools)
+        payload = build_payload(self.model, self.temperature, self.parallel, messages, tools)
         last_err = None
         retries = _max_retries()
         backoff = _retry_backoff()
+
+        # Pre-request cooldown if server is persistently failing
+        cooldown = self.health.cooldown_seconds
+        if cooldown > 0:
+            if self.on_retry:
+                hint = self.health.get_status_message() or "Server may be recovering..."
+                self.on_retry(0, retries, hint, cooldown)
+            time.sleep(cooldown)
+
         for attempt in range(retries):
             try:
                 resp = self.client.post(
@@ -84,10 +93,12 @@ class LLMClient:
                 resp.raise_for_status()
                 data = resp.json()
                 self.last_usage = data.get("usage")
+                self.health.record_success()
                 return data
             except Exception as e:
                 err = classify_error(e)
                 last_err = err
+                self.health.record_failure(err)
                 if err.retryable and attempt < retries - 1:
                     wait = backoff ** attempt
                     if self.on_retry: self.on_retry(attempt + 1, retries, str(err), wait)

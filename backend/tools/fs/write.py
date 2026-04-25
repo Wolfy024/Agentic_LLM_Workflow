@@ -29,6 +29,12 @@ def write_file(path: str, content: str) -> str:
         os.makedirs(parent, exist_ok=True)
     with open(resolved, "w", encoding="utf-8") as f:
         f.write(content)
+    # Track in retrieval memory
+    try:
+        from tools.fs.search import track_file
+        track_file(path, resolved, content, content.count("\n") + 1)
+    except Exception:
+        pass
     return f"Wrote {len(content)} bytes to {path}"
 
 
@@ -51,6 +57,14 @@ def append_to_file(path: str, content: str) -> str:
         os.makedirs(parent, exist_ok=True)
     with open(resolved, "a", encoding="utf-8") as f:
         f.write(content)
+    # Track updated file in retrieval memory
+    try:
+        from tools.fs.search import track_file
+        with open(resolved, "r", encoding="utf-8", errors="replace") as f:
+            full_text = f.read()
+        track_file(path, resolved, full_text, full_text.count("\n") + 1)
+    except Exception:
+        pass
     return f"Appended {len(content)} bytes to {path}"
 
 

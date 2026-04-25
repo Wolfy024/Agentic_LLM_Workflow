@@ -64,7 +64,7 @@ def _default_save_path(prompt: str) -> str:
 def generate_image(prompt: str, save_path: str | None = None) -> str:
     """Call the SD API, save the image, and open it."""
     if not _SD_API_BASE:
-        return json.dumps({"error": "Stable Diffusion API not configured. Set 'sd_api_base' in config.json."})
+        return json.dumps({"error": "Stable Diffusion API not configured. Set SD_API_BASE in your .env file."})
 
     # Resolve save path
     if not save_path:

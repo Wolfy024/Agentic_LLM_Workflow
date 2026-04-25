@@ -20,12 +20,6 @@ from agent.state import SessionState
 from agent.executor import ToolExecutor
 import core.runtime_config as rc
 
-# Magic number constants — read from config at runtime
-def _context_low_threshold() -> int:
-    return int(rc.get("context_low_threshold", 2000))
-
-CONTEXT_LOW_THRESHOLD = 2000  # module-level default
-
 # Keys used by tool schemas for file path arguments
 _FILE_TARGET_KEYS = ("path", "file", "file_a", "TargetFile", "AbsolutePath",
                      "SearchPath", "DirectoryPath", "url", "Url")
@@ -113,6 +107,9 @@ class AgentRunner:
         except LLMError as e:
             text = stream_md.abort() if started_text else ""
             print_error(str(e))
+            health_msg = self.llm.health.get_status_message()
+            if health_msg:
+                print_error(health_msg)
             return text, []
         except Exception as e:
             text = stream_md.abort() if started_text else ""
@@ -143,10 +140,6 @@ class AgentRunner:
         return text, tool_calls
 
     # --- Extracted sub-methods from chat_turn ---
-
-    def _ensure_context_budget(self) -> bool:
-        """Check context window, compact if needed. Returns False if exhausted."""
-        return True
 
     def _validate_tool_calls(self, tool_calls: list[dict]) -> tuple[list[dict], list[tuple]]:
         """Separate valid and malformed tool calls."""
@@ -179,8 +172,8 @@ class AgentRunner:
         if count > self.max_iterations:
             console.print(warning(f"  tool call limit reached ({self.max_iterations})"))
             self.state.messages.append({
-                "role": "system",
-                "content": f"[CIRCUIT BREAKER: Maximum tool call limit ({self.max_iterations}) reached. You must stop and provide your final answer or ask for help.]"
+                "role": "user",
+                "content": f"[System Note: CIRCUIT BREAKER: Maximum tool call limit ({self.max_iterations}) reached. You must stop and provide your final answer or ask for help.]"
             })
             return True
         return False
@@ -217,8 +210,8 @@ class AgentRunner:
                     if self._tool_history[-1] == self._tool_history[-2] == self._tool_history[-3]:
                         console.print(warning(f"  circuit breaker: '{tool_name}' called on same file 3x in a row"))
                         self.state.messages.append({
-                            "role": "system",
-                            "content": f"[CIRCUIT BREAKER: You have called '{tool_name}' on the same file ({file_target}) with the same parameters 3 times in a row. Stop repeating this call. Proceed to the next step or provide your final answer.]"
+                            "role": "user",
+                            "content": f"[System Note: CIRCUIT BREAKER: You have called '{tool_name}' on the same file ({file_target}) with the same parameters 3 times in a row. Stop repeating this call. Proceed to the next step or provide your final answer.]"
                         })
                         # Add dummy responses for orphaned tool calls
                         for orphan in valid_tcs:
@@ -235,8 +228,6 @@ class AgentRunner:
         print_token_status(
             {
                 "tokens_used": self.state.context_used(self.llm.last_usage),
-                "context_window": self.state.context_window,
-                "remaining": self.state.context_remaining(self.llm.last_usage),
                 "messages": len(self.state.messages),
                 "tokens_source": "api" if self.llm.last_usage else "estimate"
             },
@@ -255,7 +246,7 @@ class AgentRunner:
             except (json.JSONDecodeError, TypeError):
                 data = {}
 
-            if data.get(IMAGE_MARKER):
+            if isinstance(data, dict) and data.get(IMAGE_MARKER):
                 # Replace the tool result text with a confirmation
                 image_path = data.get("path", "image")
                 result["content"] = json.dumps({"status": f"Image '{image_path}' loaded and sent to model for analysis."})
@@ -280,9 +271,6 @@ class AgentRunner:
 
         try:
             while True:
-                if not self._ensure_context_budget():
-                    return
-
                 if self.stream: text, tool_calls = self._stream_response()
                 else: text, tool_calls = self._complete_response()
 
@@ -317,4 +305,4 @@ class AgentRunner:
             if self.state.messages and self.state.messages[-1]["role"] == "assistant" and self.state.messages[-1].get("tool_calls"):
                 dummy = [{"role": "tool", "tool_call_id": tc["id"], "content": "{\"error\": \"Canceled by user interrupt.\"}"} for tc in self.state.messages[-1]["tool_calls"]]
                 self.state.messages.extend(dummy)
-            self.state.messages.append({"role": "system", "content": "[User interrupted the agent (Ctrl+C). Await next instruction.]"})
+            self.state.messages.append({"role": "user", "content": "[System Note: User interrupted the agent (Ctrl+C). Await next instruction.]"})

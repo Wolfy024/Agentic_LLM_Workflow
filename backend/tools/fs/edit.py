@@ -88,6 +88,12 @@ def replace_in_file(path: str, old_string: str, new_string: str, replace_all: bo
     with open(resolved, "w", encoding="utf-8") as f:
         f.write(new_text)
     replaced = count if replace_all else 1
+    # Track updated file in retrieval memory
+    try:
+        from tools.fs.search import track_file
+        track_file(path, resolved, new_text, new_text.count("\n") + 1)
+    except Exception:
+        pass
     return f"Replaced {replaced} occurrence(s) in {path}"
 
 
@@ -129,6 +135,13 @@ def patch_file(path: str, edits: list[dict]) -> str:
         lines[s:e] = new_lines
     with open(resolved, "w", encoding="utf-8") as f:
         f.writelines(lines)
+    # Track updated file in retrieval memory
+    try:
+        from tools.fs.search import track_file
+        full_text = "".join(lines)
+        track_file(path, resolved, full_text, full_text.count("\n") + 1)
+    except Exception:
+        pass
     return f"Applied {len(edits)} edit(s) to {path}"
 
 
