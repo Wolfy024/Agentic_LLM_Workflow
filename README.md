@@ -3,6 +3,8 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![CI](https://github.com/Wolfy024/Agentic_LLM_Workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Wolfy024/Agentic_LLM_Workflow/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Wolfy024/Agentic_LLM_Workflow/graph/badge.svg)](https://codecov.io/gh/Wolfy024/Agentic_LLM_Workflow)
 
 A **local, self-hostable coding agent** with a rich tool suite, interactive REPL, and autonomous agent loop. Connects to any OpenAI-compatible LLM API endpoint and operates with intelligent file watching, retrieval memory, and permission profiles.
 
