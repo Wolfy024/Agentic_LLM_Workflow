@@ -34,6 +34,7 @@ SLASH_COMMAND_SPECS: list[tuple[str, str]] = [
     ("/export", "Export conversation to markdown"),
     ("/watch", "File watch status / toggle / auto|batch / run pending now"),
     ("/image", "Workspace image path → base64 to multimodal model (see max_image_mb)"),
+    ("/mcp", "MCP server status / connect / disconnect"),
     ("/exit", "Quit"),
 ]
 
@@ -49,6 +50,7 @@ _SLASH_HELP_LABEL: dict[str, str] = {
     "/export": "/export [file]",
     "/watch": "/watch [on|off|mode|flush]",
     "/image": "/image [path] [instruction]",
+    "/mcp": "/mcp [connect|disconnect|status]",
 }
 
 
@@ -112,7 +114,32 @@ def print_tools(schemas: list[dict]) -> None:
             lock_icon = accent("~", bold=False) if locked else " "
             console.print(f"    {lock_icon} {secondary(name, bold=False):30s} {muted(desc)}")
         console.print()
-    console.print(f"  {muted(f'{len(schemas)} tools total')}  {dim('//')}  {accent('~', bold=False)} {muted('= needs approval')}")
+
+    # MCP tools (from connected MCP servers)
+    try:
+        from mcp.manager import get_manager
+        mgr = get_manager()
+        mcp_statuses = mgr.get_status()
+        mcp_tools_shown = 0
+        for srv in mcp_statuses:
+            if srv["connected"] and srv["tools"]:
+                if mcp_tools_shown == 0:
+                    console.print(section_header("MCP"))
+                    console.print()
+                for tname in srv["tools"]:
+                    perm = srv.get("permission", "destructive")
+                    lock_icon = accent("~", bold=False) if perm == "destructive" else " "
+                    server_label = f"via {srv['name']}"
+                    if srv.get("transport") == "sse":
+                        server_label += " (sse)"
+                    console.print(f"    {lock_icon} {secondary(tname, bold=False):30s} {muted(server_label)}")
+                    mcp_tools_shown += 1
+                console.print()
+        total = len(schemas) + mcp_tools_shown
+    except Exception:
+        total = len(schemas)
+
+    console.print(f"  {muted(f'{total} tools total')}  {dim('//')}  {accent('~', bold=False)} {muted('= needs approval')}")
     console.print()
 
 

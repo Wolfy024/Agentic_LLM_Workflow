@@ -50,7 +50,14 @@ class ToolExecutor:
                 args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
             except json.JSONDecodeError:
                 return False
-            if name not in _PARALLEL_SAFE_TOOLS:
+            # MCP tools run in isolated server processes — always safe to parallelize
+            is_mcp = False
+            try:
+                from mcp.manager import get_manager
+                is_mcp = get_manager().is_mcp_tool(name)
+            except Exception:
+                pass
+            if not is_mcp and name not in _PARALLEL_SAFE_TOOLS:
                 return False
             if name == "github_api" and args.get("method", "GET").upper() != "GET":
                 return False

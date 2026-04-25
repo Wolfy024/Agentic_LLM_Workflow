@@ -101,6 +101,16 @@ def print_banner(config: dict, workspace: str, session_name: str | None = None) 
     console.print(label_value("profile", prof))
     console.print(label_value("streaming", f"{status_dot(True)} enabled"))
     console.print(label_value("search", f"{status_dot(bool(config.get('serper_api_key')))} serper"))
+
+    # MCP server status
+    try:
+        from mcp.manager import get_manager
+        mgr = get_manager()
+        if mgr.connected_count > 0 or mgr.server_names:
+            console.print(label_value("mcp", f"{status_dot(mgr.connected_count > 0)} {mgr.get_summary()}"))
+    except Exception:
+        pass
+
     console.print()
     console.print(f"  {divider(width=72)}")
     console.print(WELCOME_TIP)

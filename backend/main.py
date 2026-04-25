@@ -26,6 +26,7 @@ from agent.executor import ToolExecutor
 from agent.runner import AgentRunner
 from agent.watch.service import FileWatchService
 from llm.client import LLMClient
+from mcp.manager import MCPManager, get_manager, set_manager
 
 
 def _parse_args():
@@ -99,6 +100,26 @@ def _save_exit_prefs(prefs: dict, llm: LLMClient, watch_ctx: dict) -> None:
     save_prefs(out_prefs)
 
 
+def _setup_mcp(config: dict) -> None:
+    """Initialize MCP servers from config and report status."""
+    mcp_servers = config.get("mcp_servers")
+    if not mcp_servers or not isinstance(mcp_servers, dict):
+        return
+
+    mgr = get_manager()
+    errors = mgr.connect_from_config(mcp_servers)
+
+    # Report results
+    for status in mgr.get_status():
+        if status["connected"]:
+            tools = ", ".join(status["tools"][:5])
+            more = f" +{status['tool_count'] - 5} more" if status['tool_count'] > 5 else ""
+            console.print(f"  {primary('MCP', bold=False)} {status['name']} — {status['tool_count']} tools ({tools}{more})")
+
+    for err in errors:
+        console.print(warning(f"  MCP error: {err}"))
+
+
 def main():
     args = _parse_args()
     config = load_config()
@@ -141,6 +162,9 @@ def main():
     if prefs.get("yolo"):
         set_yolo(True)
 
+    # MCP servers
+    _setup_mcp(config)
+
     watch_ctx = _setup_watch(args, prefs)
 
     # Run
@@ -154,6 +178,11 @@ def main():
         _save_exit_prefs(prefs, llm, watch_ctx)
         if watch_ctx.get("service"):
             watch_ctx["service"].stop()
+        # Disconnect all MCP servers
+        try:
+            get_manager().disconnect_all()
+        except Exception:
+            pass
         llm.client.close()
 
 

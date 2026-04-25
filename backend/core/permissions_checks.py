@@ -64,7 +64,24 @@ def get_profile() -> str:
 
 
 def is_tool_denied_in_profile(tool_name: str, args: dict) -> bool:
-    """In profile 'ci', block mutating tools. dev matches strict for now."""
+    """In profile 'ci', block mutating tools. dev matches strict for now.
+
+    Also handles MCP tools: denied if the server's permission is 'deny',
+    or if the profile is 'ci' and the MCP tool isn't explicitly allowed.
+    """
+    # --- MCP tool checks ---
+    try:
+        from mcp.manager import get_manager
+        mgr = get_manager()
+        if mgr.is_mcp_tool(tool_name):
+            if mgr.is_mcp_tool_denied(tool_name):
+                return True  # Explicitly denied in config
+            if _profile == "ci":
+                return True  # CI blocks all MCP tools by default
+    except Exception:
+        pass
+
+    # --- Native tool checks ---
     if _profile != "ci":
         return False
     if tool_name == "list_directory" and _list_directory_targets_outside_workspace(args):
@@ -81,10 +98,22 @@ def is_tool_denied_in_profile(tool_name: str, args: dict) -> bool:
 
 
 def is_destructive(tool_name: str, args: dict) -> bool:
-    """Check if the given tool requires explicit approval."""
+    """Check if the given tool requires explicit approval.
+
+    Covers both native tools and MCP tools (via the manager's per-tool
+    permission classification).
+    """
     if tool_name in DESTRUCTIVE_TOOLS:
         return True
     checker = CONTEXT_DESTRUCTIVE_TOOLS.get(tool_name)
     if checker and checker(args):
         return True
+    # MCP tools classified as "destructive" in config also need approval
+    try:
+        from mcp.manager import get_manager
+        mgr = get_manager()
+        if mgr.is_mcp_tool(tool_name) and mgr.is_mcp_tool_destructive(tool_name):
+            return True
+    except Exception:
+        pass
     return False

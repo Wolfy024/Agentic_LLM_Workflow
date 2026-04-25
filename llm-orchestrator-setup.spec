@@ -34,10 +34,13 @@ a = Analysis(
         'repl', 'repl.loop', 'repl.slash',
         'repl.commands', 'repl.commands.config', 'repl.commands.info',
         'repl.commands.inject', 'repl.commands.session', 'repl.commands.watch',
+        'repl.commands.mcp',
         # ui
         'ui', 'ui.banner', 'ui.components', 'ui.console', 'ui.context_logs',
         'ui.dimming', 'ui.help', 'ui.markdown', 'ui.palette',
         'ui.repl_bindings', 'ui.slash_complete', 'ui.streaming', 'ui.tool_logs',
+        # mcp
+        'mcp', 'mcp.client', 'mcp.manager', 'mcp.transport',
         # third-party
         'dotenv', 'tkinter',
     ],

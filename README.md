@@ -23,6 +23,7 @@ A **local, self-hostable coding agent** with a rich tool suite, interactive REPL
 - [CLI Options](#cli-options)
 - [Slash Commands](#slash-commands)
 - [Tool Reference](#tool-reference)
+- [MCP Servers](#mcp-servers)
 - [Permission Profiles](#permission-profiles)
 - [Agent Architecture](#agent-architecture)
 - [Retrieval Memory](#retrieval-memory)
@@ -50,6 +51,7 @@ A **local, self-hostable coding agent** with a rich tool suite, interactive REPL
 | **Permission Profiles** | `strict`, `dev`, `ci` — control what the agent can do without confirmation |
 | **Session Management** | Save, load, export, and auto-save conversation sessions |
 | **Prompt Recipes** | Reusable prompt templates loaded from `.minillm/recipes/` |
+| **MCP Protocol Support** | Native MCP client — plug in external MCP servers (filesystem, Brave Search, Postgres, etc.) via config |
 | **Server Health Tracking** | Escalating cooldowns for persistent server failures |
 | **Web UI** | Companion documentation site in `docs/` |
 
@@ -78,6 +80,11 @@ A **local, self-hostable coding agent** with a rich tool suite, interactive REPL
 | **Health Tracker** | (`ServerHealthTracker`) Monitors consecutive server failures and applies escalating cooldowns |
 | **Batch Mode** | A file watch mode where changes are queued and flushed to the model in a single notification |
 | **Auto Mode** | A file watch mode where each file change triggers an immediate notification to the model |
+| **MCP** | Model Context Protocol — an open standard for connecting LLM agents to external tool servers |
+| **MCP Server** | A process that exposes tools/resources over the MCP protocol (stdio subprocess or HTTP/SSE endpoint) |
+| **MCP Client** | The orchestrator's built-in client that connects to MCP servers and routes tool calls |
+| **Stdio Transport** | MCP communication over stdin/stdout pipes to a local subprocess |
+| **SSE Transport** | MCP communication over HTTP Server-Sent Events to a remote server |
 
 ---
 
@@ -170,6 +177,7 @@ Advanced settings are controlled via `config.json` (located in the project root 
 | `sd_timeout` | `120` | Stable Diffusion API timeout (seconds) |
 | `max_search_results` | `50` | Max results for file search tools |
 | `diff_preview_limit` | `6000` | Max characters for diff previews |
+| `mcp_servers` | `{}` | MCP server definitions (see [MCP Servers](#mcp-servers)) |
 | `system_prompt` | *(see config.json)* | Default system prompt for the agent |
 | `sd_api_base` | *(env:SD_API_BASE)* | Stable Diffusion API endpoint |
 | `serper_api_key` | *(env:SERPER_API_KEY)* | Serper API key for web search |
@@ -276,6 +284,15 @@ All slash commands are entered in the REPL. They are prefixed with `/`.
 | `/watch mode auto\|batch` | Set watch mode strategy |
 | `/watch flush` | Flush queued file changes to the model immediately |
 
+### MCP
+
+| Command | Description |
+|---------|-------------|
+| `/mcp` | Show MCP server status (connected servers and tool counts) |
+| `/mcp connect` | Re-connect all MCP servers from `config.json` |
+| `/mcp disconnect` | Disconnect all MCP servers |
+| `/mcp status` | Detailed status including per-server tool lists |
+
 ### Exit
 
 | Command | Description |
@@ -362,6 +379,75 @@ All slash commands are entered in the REPL. They are prefixed with `/`.
 
 ---
 
+## MCP Servers
+
+The orchestrator includes a native **MCP (Model Context Protocol)** client that lets you plug in external tool servers without writing any code. MCP tools appear alongside native tools — the LLM sees them as a single unified toolset.
+
+### Adding MCP Servers
+
+Add entries to the `mcp_servers` key in `config.json` (works both from source and post-install — just edit the `config.json` next to the executable):
+
+```json
+{
+  "mcp_servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"],
+      "permission": "destructive"
+    },
+    "brave-search": {
+      "transport": "sse",
+      "url": "https://your-mcp-proxy.example.com",
+      "headers": { "Authorization": "Bearer your_key" },
+      "permission": "allow"
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"],
+      "permission": "destructive"
+    }
+  }
+}
+```
+
+### Transport Types
+
+| Transport | Use Case | Config Keys |
+|-----------|----------|-------------|
+| `stdio` (default) | Local subprocess MCP servers (filesystem, git, Postgres) | `command`, `args`, `env`, `cwd` |
+| `sse` | Remote HTTP MCP servers (Brave Search, API gateways) | `url`, `headers` |
+
+### Permission Levels
+
+Each MCP server has a `permission` setting that controls how the orchestrator gates its tools:
+
+| Permission | Behavior |
+|------------|----------|
+| `"allow"` | Tools run freely (like native read-only tools) |
+| `"destructive"` (default) | Tools require user approval before execution (unless YOLO mode) |
+| `"deny"` | Tools are registered but blocked from execution |
+
+In `ci` profile, **all** MCP tools are blocked regardless of their permission setting.
+
+### Lifecycle
+
+1. **Startup** — MCP servers defined in config are auto-connected when the orchestrator launches
+2. **Runtime** — Use `/mcp connect` to reconnect, `/mcp disconnect` to tear down
+3. **Shutdown** — All MCP servers are gracefully disconnected on exit
+
+### Post-Install Setup
+
+After installing via the pre-built executable:
+
+1. Navigate to the install directory (e.g., `%LOCALAPPDATA%\LLM_Orchestrator\`)
+2. Open `config.json` in any text editor
+3. Add your MCP server entries to the `mcp_servers` object
+4. Restart the orchestrator — servers will auto-connect
+
+> **Note:** Most MCP servers require `npx` (Node.js) to be installed on your system. Install Node.js from [nodejs.org](https://nodejs.org/) if you haven't already.
+
+---
+
 ## Permission Profiles
 
 The orchestrator supports three permission profiles that control tool access and approval requirements:
@@ -426,7 +512,14 @@ The following tools are always flagged as destructive and require approval (unle
 │           ▼                                       │
 │  ┌────────────────────────────────────────────┐   │
 │  │         Tool Registry                      │   │
-│  │  FS · Git · Web · Search · System          │   │
+│  │  FS · Git · Web · Search · System · MCP    │   │
+│  └─────────────────┬──────────────────────────┘   │
+│                    │                              │
+│                    ▼                              │
+│  ┌────────────────────────────────────────────┐   │
+│  │         MCP Client Bridge                  │   │
+│  │  stdio (local) · SSE (remote)              │   │
+│  │  → filesystem · brave-search · postgres    │   │
 │  └────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────┘
 ```
@@ -441,6 +534,8 @@ The following tools are always flagged as destructive and require approval (unle
 | **LLMClient** | `backend/llm/client.py` | HTTP client for API calls with retry logic and health tracking |
 | **ServerHealthTracker** | `backend/llm/errors.py` | Monitors consecutive failures and applies escalating cooldowns |
 | **ToolRegistry** | `backend/tools/registry.py` | Decorator-based tool registration with OpenAI function-calling schemas |
+| **MCPManager** | `backend/mcp/manager.py` | Multi-server MCP lifecycle, schema aggregation, and tool routing |
+| **MCPClient** | `backend/mcp/client.py` | Per-server client — handles initialize, tool discovery, tool execution |
 | **FileWatchService** | `backend/agent/watch/service.py` | Background file monitoring via `watchdog` |
 
 ### Retry Logic
@@ -614,7 +709,8 @@ A recipe JSON can contain:
 │   │   │   ├── info.py            # /help, /tools, /context, /memory
 │   │   │   ├── inject.py          # /task, /plan, /recipe, /image
 │   │   │   ├── session.py         # /save, /load, /clear, /compact, /export
-│   │   │   └── watch.py           # /watch subcommands
+│   │   │   ├── watch.py           # /watch subcommands
+│   │   │   └── mcp.py             # /mcp subcommands
 │   │   ├── loop.py                # REPL input loop
 │   │   └── slash_complete.py      # Slash command autocompletion
 │   ├── tools/
@@ -638,6 +734,11 @@ A recipe JSON can contain:
 │   │   │   └── fetch.py           # URL fetching, download_url
 │   │   ├── image_gen.py           # Stable Diffusion image generation
 │   │   └── system.py              # run_command, env_info, list_processes
+│   ├── mcp/                       # MCP (Model Context Protocol) client
+│   │   ├── __init__.py            # Package init
+│   │   ├── transport.py           # Stdio + SSE JSON-RPC transports
+│   │   ├── client.py              # Per-server MCP client
+│   │   └── manager.py             # Multi-server manager singleton
 │   ├── ui/
 │   │   ├── banner.py              # Startup banner
 │   │   ├── components.py          # UI components (label_value, etc.)

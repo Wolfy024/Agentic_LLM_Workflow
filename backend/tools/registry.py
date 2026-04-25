@@ -63,12 +63,33 @@ def tool(name: str, description: str, parameters: dict):
 
 
 def get_tool_schemas() -> list[dict]:
-    return [schema for _, schema in TOOL_REGISTRY.values()]
+    """Return all tool schemas: native @tool + connected MCP servers."""
+    native = [schema for _, schema in TOOL_REGISTRY.values()]
+    try:
+        from mcp.manager import get_manager
+        mgr = get_manager()
+        mcp_schemas = mgr.get_all_schemas()
+        return native + mcp_schemas
+    except Exception:
+        return native
 
 
 def execute_tool(name: str, args: dict) -> str:
+    # --- Route to MCP server if tool is external ---
     if name not in TOOL_REGISTRY:
+        try:
+            from mcp.manager import get_manager
+            mgr = get_manager()
+            if mgr.is_mcp_tool(name):
+                output = mgr.call_tool(name, args)
+                _MAX_TOOL_OUTPUT = 40_000
+                if len(output) > _MAX_TOOL_OUTPUT:
+                    output = output[:_MAX_TOOL_OUTPUT] + f"\n... [output truncated at {_MAX_TOOL_OUTPUT:,} chars]"
+                return output
+        except Exception as e:
+            return json.dumps({"error": f"MCP dispatch error: {type(e).__name__}: {e}"})
         return json.dumps({"error": f"Unknown tool: {name}"})
+
     fn, _ = TOOL_REGISTRY[name]
     try:
         result = fn(**args)

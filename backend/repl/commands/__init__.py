@@ -15,6 +15,7 @@ from repl.commands.config import (
 from repl.commands.info import cmd_help, cmd_tools, cmd_context, cmd_memory
 from repl.commands.inject import cmd_task, cmd_plan, cmd_recipe, cmd_image
 from repl.commands.watch import cmd_watch
+from repl.commands.mcp import cmd_mcp
 
 COMMAND_DISPATCH: dict[str, callable] = {
     "/help": cmd_help,
@@ -39,4 +40,5 @@ COMMAND_DISPATCH: dict[str, callable] = {
     "/task": cmd_task,
     "/plan": cmd_plan,
     "/watch": cmd_watch,
+    "/mcp": cmd_mcp,
 }
