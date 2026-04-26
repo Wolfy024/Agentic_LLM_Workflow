@@ -16,7 +16,7 @@ A **local, self-hostable coding agent** with a rich tool suite, interactive REPL
 - [Terminology Glossary](#terminology-glossary)
 - [Installation](#installation)
   - [From Source](#from-source)
-  - [Windows Pre-built Installer](#windows-pre-built-installer)
+  - [Pre-built Installer (Windows & Linux)](#pre-built-installer-windows--linux)
 - [Configuration](#configuration)
   - [`.env` File](#env-file)
   - [`config.json` Settings](#configjson-settings)
@@ -116,10 +116,10 @@ cd backend
 python main.py [workspace_path]
 ```
 
-### Windows Pre-built Installer
+### Pre-built Installer (Windows & Linux)
 
-1. Download `llm-orchestrator-setup.exe` from the [releases page](https://github.com/Wolfy024/Agentic_LLM_Workflow/releases) (or `dist/` folder)
-2. Run the installer — it copies the binary to `%LOCALAPPDATA%\LLM_Orchestrator\` and optionally adds it to your `PATH`
+1. Download `llm-orchestrator-setup.exe` (Windows) or `llm-orchestrator-setup` (Linux) from the [releases page](https://github.com/Wolfy024/Agentic_LLM_Workflow/releases) (or `dist/` folder)
+2. Run the installer — it copies the binary to `%LOCALAPPDATA%\LLM_Orchestrator\` (Windows) or `~/.local/share/LLM_Orchestrator` (Linux) and optionally adds it to your `PATH`
 3. Create a `.env` file in the install directory with your credentials
 4. Open a **new** terminal and run:
 
@@ -761,7 +761,7 @@ A recipe JSON can contain:
 ├── dist/                          # Pre-built binaries and installer
 ├── tests/                         # Test suite
 ├── entrypoint.py                  # Alternative entrypoint
-├── installer.py                   # Windows GUI installer
+├── installer.py                   # Cross-platform GUI installer
 ├── requirements.txt               # Python dependencies
 └── .env.example                   # Example environment configuration
 ```

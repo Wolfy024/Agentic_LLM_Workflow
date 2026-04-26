@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 import argparse
-import ctypes
 import os
 import shutil
 import sys
 import tkinter as tk
-import winreg
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+IS_WINDOWS = sys.platform.startswith("win")
+
+if IS_WINDOWS:
+    import ctypes
+    import winreg
+
 APP_NAME = "LLM Orchestrator"
 INSTALL_DIR_NAME = "LLM_Orchestrator"
-PRIMARY_EXE_NAME = "llm-orchestrator.exe"
-ALIAS_EXE_NAME = "orchestrator.exe"
+
+EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
+PRIMARY_EXE_NAME = f"llm-orchestrator{EXE_SUFFIX}"
+ALIAS_EXE_NAME = f"orchestrator{EXE_SUFFIX}"
 CONFIG_FILE_NAME = "config.json"
 STARTUP_BANNER_NAME = "startup_banner.txt"
 
@@ -81,8 +87,11 @@ def resolve_payload() -> dict[str, Path | None]:
 
 
 def get_default_install_dir() -> Path:
-    local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
-    return Path(local_app_data) / INSTALL_DIR_NAME
+    if IS_WINDOWS:
+        local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+        return Path(local_app_data) / INSTALL_DIR_NAME
+    else:
+        return Path.home() / ".local" / "share" / INSTALL_DIR_NAME
 
 
 def _normalize_win_path(path: str) -> str:
@@ -90,6 +99,8 @@ def _normalize_win_path(path: str) -> str:
 
 
 def _broadcast_env_change() -> None:
+    if not IS_WINDOWS:
+        return
     HWND_BROADCAST = 0xFFFF
     WM_SETTINGCHANGE = 0x001A
     SMTO_ABORTIFHUNG = 0x0002
@@ -98,7 +109,42 @@ def _broadcast_env_change() -> None:
     )
 
 
+def add_to_linux_path(install_dir: Path) -> bool:
+    try:
+        target = str(install_dir)
+        line_to_add = f'\nexport PATH="$PATH:{target}"\n'
+        
+        rc_files = [Path.home() / ".bashrc", Path.home() / ".zshrc"]
+        added = False
+        for rc in rc_files:
+            if rc.exists():
+                content = rc.read_text(encoding="utf-8")
+                if f'PATH="$PATH:{target}"' not in content and f'PATH="{target}:$PATH"' not in content:
+                    with open(rc, "a", encoding="utf-8") as f:
+                        f.write(line_to_add)
+                added = True
+        return added
+    except Exception:
+        return False
+
+
+def remove_from_linux_path(install_dir: Path) -> bool:
+    try:
+        target = str(install_dir)
+        rc_files = [Path.home() / ".bashrc", Path.home() / ".zshrc"]
+        for rc in rc_files:
+            if rc.exists():
+                lines = rc.read_text(encoding="utf-8").splitlines()
+                new_lines = [line for line in lines if target not in line]
+                rc.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        return True
+    except Exception:
+        return False
+
+
 def add_to_user_path(install_dir: Path) -> bool:
+    if not IS_WINDOWS:
+        return add_to_linux_path(install_dir)
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_ALL_ACCESS) as key:
             try:
@@ -117,6 +163,8 @@ def add_to_user_path(install_dir: Path) -> bool:
 
 
 def remove_from_user_path(install_dir: Path) -> bool:
+    if not IS_WINDOWS:
+        return remove_from_linux_path(install_dir)
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_ALL_ACCESS) as key:
             try:
